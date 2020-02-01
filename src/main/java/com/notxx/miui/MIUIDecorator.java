@@ -19,6 +19,8 @@ public class MIUIDecorator extends NevoDecoratorService {
 
     private static final String NOTIFICATION_SMALL_ICON = "mipush_small_notification";
 
+	private static final String TAG = "MIUIDecorator";
+
     private ArrayMap<String, String> embed;
 
     @Override
@@ -35,20 +37,21 @@ public class MIUIDecorator extends NevoDecoratorService {
     }
 
     @Override
-    protected void apply(MutableStatusBarNotification evolving) {
+    protected boolean apply(MutableStatusBarNotification evolving) {
         final MutableNotification n = evolving.getNotification();
         Log.d(TAG, "begin modifying");
         Icon defIcon = Icon.createWithResource(this, R.drawable.default_notification_icon);
         Bundle extras = n.extras;
         String packageName = null;
         try {
-            packageName = evolving.getPackageName();
+			packageName = evolving.getPackageName();
+			Log.d(TAG, "package name: " + packageName);
             if ("com.xiaomi.xmsf".equals(packageName))
                 packageName = extras.getString("target_package", null);
 		} catch (final RuntimeException ignored) {}    // Fall-through
         if (packageName == null) {
             Log.e(TAG, "packageName is null");
-            return;
+            return false;
         }
         extras.putBoolean("miui.isGrayscaleIcon", true);
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
@@ -82,6 +85,7 @@ public class MIUIDecorator extends NevoDecoratorService {
                 }
             }
         }
-        Log.d(TAG, "end modifying");
+		Log.d(TAG, "end modifying");
+		return true;
     }
 }
