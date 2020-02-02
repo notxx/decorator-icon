@@ -1,5 +1,6 @@
 package com.notxx.icon;
 
+import android.app.Notification;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.graphics.Bitmap;
@@ -53,9 +54,22 @@ public class SmallIconDecorator extends NevoDecoratorService {
 	@Override
 	protected boolean apply(MutableStatusBarNotification evolving) {
 		final MutableNotification n = evolving.getNotification();
-		Log.d(TAG, "begin modifying");
-		Icon defIcon = Icon.createWithResource(this, R.drawable.default_notification_icon);
 		Bundle extras = n.extras;
+
+		// bigText
+		Log.d(TAG, "begin modifying bigText");
+		if (n.bigContentView == null) {
+			final CharSequence text = extras.getCharSequence(Notification.EXTRA_TEXT);
+			if (text != null) {
+				extras.putCharSequence(Notification.EXTRA_TITLE_BIG, extras.getCharSequence(Notification.EXTRA_TITLE));
+				extras.putCharSequence(Notification.EXTRA_BIG_TEXT, text);
+				extras.putString(Notification.EXTRA_TEMPLATE, TEMPLATE_BIG_TEXT);
+			}
+		}
+
+		// smallIcon
+		Log.d(TAG, "begin modifying smallIcon");
+		Icon defIcon = Icon.createWithResource(this, R.drawable.default_notification_icon);
 		String packageName = null;
 		try {
 			packageName = evolving.getPackageName();
