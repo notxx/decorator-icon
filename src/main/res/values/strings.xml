@@ -16,9 +16,9 @@
   -->
 
 <resources>
-    <string name="decorator_miui_label">nevo-decorator-miui</string>
-    <string name="decorator_miui_description">make small-icon of MiPushFramework great again...</string>
-    <string-array name="decorator_miui_embed">
+    <string name="decorator_icon_label">nevo-decorator-icon</string>
+    <string name="decorator_icon_description">make small-icon of MiPush/HWPush great again...</string>
+    <string-array name="decorator_icon_embed">
         <item>cn.com.weilaihui3</item>
         <item>com.baidu.BaiduMap</item>
         <item>com.cainiao.wireless</item>
