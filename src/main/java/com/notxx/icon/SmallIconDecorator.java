@@ -4,6 +4,8 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.Icon;
@@ -25,6 +27,7 @@ import com.oasisfeng.nevo.sdk.MutableStatusBarNotification;
 import com.oasisfeng.nevo.sdk.NevoDecoratorService;
 
 import top.trumeet.common.cache.IconCache;
+import top.trumeet.common.utils.ImgUtils;
 
 public class SmallIconDecorator extends NevoDecoratorService {
 
@@ -46,6 +49,14 @@ public class SmallIconDecorator extends NevoDecoratorService {
 		return backgroundColor;
 	}
 
+	private Resources getResourcesForApplication(ApplicationInfo appInfo) {
+		try {
+			return getPackageManager().getResourcesForApplication(appInfo);
+		} catch (PackageManager.NameNotFoundException ign) {
+			return null;
+		}
+	}
+
 	private ArrayMap<String, String> embed;
 
 	@Override
@@ -65,14 +76,16 @@ public class SmallIconDecorator extends NevoDecoratorService {
 	protected boolean apply(MutableStatusBarNotification evolving) {
 		final MutableNotification n = evolving.getNotification();
 		final Bundle extras = n.extras;
+		final ApplicationInfo appInfo = extras.getParcelable("android.appInfo");
+		final Resources appResources = getResourcesForApplication(appInfo);
 		final String packageName = evolving.getPackageName(),
 			channelId = n.getChannelId();
 		byte phase = extras.getByte(PHASE);
-		Log.d(TAG, "package name: " + packageName);
+		// Log.d(TAG, "package name: " + packageName);
 
 		// bigText
-		Log.d(TAG, "begin modifying bigText");
 		if (phase < 1 && n.bigContentView == null) {
+			Log.d(TAG, "begin modifying bigText");
 			final CharSequence text = extras.getCharSequence(Notification.EXTRA_TEXT);
 			if (text != null) {
 				extras.putCharSequence(Notification.EXTRA_TITLE_BIG, extras.getCharSequence(Notification.EXTRA_TITLE));
@@ -80,73 +93,87 @@ public class SmallIconDecorator extends NevoDecoratorService {
 				extras.putString(Notification.EXTRA_TEMPLATE, TEMPLATE_BIG_TEXT);
 			}
 			extras.putByte(PHASE, (byte)1);
+		} else {
+			Log.d(TAG, "skip modifying bigText");
 		}
 
 		// channel
 		if (phase < 2 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 			Log.d(TAG, "begin modifying channel");
-			try {
-				final ApplicationInfo appInfo = extras.getParcelable("android.appInfo");
-				final int labelRes = appInfo.labelRes;
-				final String label = (labelRes == 0) ? appInfo.nonLocalizedLabel.toString() : getPackageManager().getResourcesForApplication(appInfo).getString(appInfo.labelRes);
-				Log.d(TAG, "label: " + label + " channel: " + channelId);
-				final NotificationChannel channel = getNotificationChannel(packageName, Process.myUserHandle(), channelId);
-				final String newId = "::" + packageName + "::" + channelId,
-					newName = getString(R.string.decorator_channel_label, label, channel.getName());
-				Log.d(TAG, "newId: " + newId + " newName: " + newName);
-				final List<NotificationChannel> channels = new ArrayList<>();
-				channels.add(cloneChannel(channel, newId, newName));
-				createNotificationChannels(packageName, Process.myUserHandle(), channels);
-				n.setChannelId(newId);
-				Log.d(TAG, "original extras " + extras);
-			} catch (final Exception ignored) { Log.e(TAG, "?", ignored); } // Fall-through
+			final int labelRes = appInfo.labelRes;
+			final String label = (labelRes == 0 || appResources == null) ? appInfo.nonLocalizedLabel.toString() : appResources.getString(appInfo.labelRes);
+			// Log.d(TAG, "label: " + label + " channel: " + channelId);
+			final NotificationChannel channel = getNotificationChannel(packageName, Process.myUserHandle(), channelId);
+			final String newId = "::" + packageName + "::" + channelId,
+				newName = getString(R.string.decorator_channel_label, label, channel.getName());
+			// Log.d(TAG, "newId: " + newId + " newName: " + newName);
+			final List<NotificationChannel> channels = new ArrayList<>();
+			channels.add(cloneChannel(channel, newId, newName));
+			createNotificationChannels(packageName, Process.myUserHandle(), channels);
+			n.setChannelId(newId);
+			// Log.d(TAG, "original extras " + extras);
 			extras.putByte(PHASE, (byte)2);
+		} else {
+			Log.d(TAG, "skip modifying channel");
 		}
 		
 		// smallIcon
 		if (phase < 3 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 			Log.d(TAG, "begin modifying smallIcon");
 			Icon defIcon = Icon.createWithResource(this, R.drawable.default_notification_icon);
-			extras.putBoolean("miui.isGrayscaleIcon", true);
 			final IconCache cache = IconCache.getInstance();
-			int iconId;
-			if (channelId == null) {
-				n.color = Color.RED;
-				Log.d(TAG, "null extras " + extras);
-			} else if (channelId.equals("com.huawei.android.pushagent")
-					|| channelId.equals("com.huawei.android.pushagent.low")
-					|| channelId.endsWith("::com.huawei.android.pushagent")
-					|| channelId.endsWith("::com.huawei.android.pushagent.low")) {
-				n.color = Color.GREEN;
-				Log.d(TAG, "hwpush extras " + extras);
-			} else {
-				n.color = Color.BLUE;
-				Log.d(TAG, "other extras " + extras);
-			}
-			/*if (embed.containsKey(packageName)) {
+			int iconId = 0;
+			// if (channelId == null) {
+			// 	n.color = Color.RED;
+			// 	Log.d(TAG, "null extras " + extras);
+			// } else if (channelId.equals("com.huawei.android.pushagent")
+			// 		|| channelId.equals("com.huawei.android.pushagent.low")
+			// 		|| channelId.endsWith("::com.huawei.android.pushagent")
+			// 		|| channelId.endsWith("::com.huawei.android.pushagent.low")) {
+			// 	n.color = Color.GREEN;
+			// 	Log.d(TAG, "hwpush extras " + extras);
+			// } else {
+			// 	n.color = Color.BLUE;
+			// 	Log.d(TAG, "other extras " + extras);
+			// }
+			if (embed.containsKey(packageName)) {
 				String key = embed.get(packageName);
 				// Log.d(TAG, "key: " + key);
 				iconId = getResources().getIdentifier(key, "drawable", getPackageName());
 				// Log.d(TAG, "iconId: " + iconId);
-				// Log.d(TAG, "com.xiaomi.smarthome iconId: " + R.drawable.com_xiaomi_smarthome);
-				if (iconId > 0) // has icon
-					n.setSmallIcon(Icon.createWithResource(this, iconId));
+				if (iconId > 0) { // has icon
+					final int ref = iconId;
+					Icon cached = cache.getIconCache(this, packageName, 
+							(ctx, pkg) -> ImgUtils.drawableToBitmap(getResources().getDrawable(ref)),
+							(ctx, b) -> b);
+					if (cached != null)
+						n.setSmallIcon(cached);
+					else
+						iconId = -1;
+				}
 				int colorId = getResources().getIdentifier(key, "string", getPackageName());
-				// if (colorId != 0) // has color
-				// 	n.color = Color.parseColor(getString(colorId));
-				// Log.d(TAG, "通知 " + iconId + " channel: " + n.getChannelId());
-			} else */if ((iconId  = getResources().getIdentifier(MIPUSH_SMALL_ICON, "drawable", packageName)) != 0) { // has embed icon
+				// Log.d(TAG, "colorId: " + colorId);
+				if (colorId != 0) // has color
+					n.color = Color.parseColor(getString(colorId));
+			}
+			if (iconId > 0) { // do nothing
+				// Log.d(TAG, "do nothing iconId: " + iconId);
+			} else if ((iconId  = getResources().getIdentifier(MIPUSH_SMALL_ICON, "drawable", packageName)) != 0) { // has embed icon
+				// Log.d(TAG, "mipush_small iconId: " + iconId);
 				n.setSmallIcon(Icon.createWithResource(packageName, iconId));
 			} else { // does not have icon
-				Icon cached = cache.getIconCache(this, packageName, (ctx, b) -> Icon.createWithBitmap(b));
+				// Log.d(TAG, "generate iconId: " + iconId);
+				Icon cached = cache.getIconCache(this, packageName);
 				if (cached != null) {
 					n.setSmallIcon(cached);
 				} else {
 					n.setSmallIcon(defIcon);
 				}
-				// n.color = cache.getAppColor(this, packageName, (ctx, b) -> getBackgroundColor(b));
+				n.color = cache.getAppColor(this, packageName, (ctx, b) -> getBackgroundColor(b));
 			}
 			extras.putByte(PHASE, (byte)3);
+		} else {
+			Log.d(TAG, "skip modifying smallIcon");
 		}
 		Log.d(TAG, "end modifying");
 		return true;

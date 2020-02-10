@@ -20,11 +20,9 @@ import static top.trumeet.common.utils.ImgUtils.drawableToBitmap;
 public class IconCache {
 
     private volatile static IconCache cache = null;
-    private LruCache<String, Bitmap> bitmapLruCache;
-    private LruCache<String, Icon> mIconMemoryCaches;
-
-
-    private LruCache<String, Integer> appColorCache;
+    private final LruCache<String, Bitmap> bitmapLruCache;
+    private final LruCache<String, Icon> mIconMemoryCaches;
+    private final LruCache<String, Integer> appColorCache;
 
     private IconCache() {
         bitmapLruCache = new LruCache<>(100);
@@ -60,21 +58,33 @@ public class IconCache {
                 }
             }
         }.get("raw_" + pkg);
+	}
+	
+	public Icon getIconCache(final Context ctx, final String pkg, final Converter<String, Bitmap> raw,
+			final Converter<Bitmap, Bitmap> white, final Converter<Bitmap, Icon> callback) {
+		return new AbstractCacheAspect<Icon>(mIconMemoryCaches) {
+			@Override
+			Icon gen() {
+				final Bitmap rawIcon = raw.convert(ctx, pkg);
+				final Bitmap whiteIcon = white.convert(ctx, rawIcon);
+				return callback.convert(ctx, whiteIcon);
+			}
+		}.get("white_" + pkg);
+	}
+	
+	public Icon getIconCache(final Context ctx, final String pkg, final Converter<String, Bitmap> raw, final Converter<Bitmap, Bitmap> white) {
+		return getIconCache(ctx, pkg, raw, white, IconCache::createIconWithBitmap);
+	}
+	
+	public Icon getIconCache(final Context ctx, final String pkg, final Converter<String, Bitmap> raw) {
+		return getIconCache(ctx, pkg, this::getRawIconBitmap, IconCache::whitenBitmap, IconCache::createIconWithBitmap);
+	}
+
+    public Icon getIconCache(final Context ctx, final String pkg) {
+		return getIconCache(ctx, pkg, this::getRawIconBitmap, IconCache::whitenBitmap, IconCache::createIconWithBitmap);
     }
 
-    public Icon getIconCache(final Context ctx, final String pkg, Converter<Bitmap, Icon> callback) {
-        return new AbstractCacheAspect<Icon>(mIconMemoryCaches) {
-            @Override
-            Icon gen() {
-                Bitmap rawIconBitmap = getRawIconBitmap(ctx, pkg);
-                Bitmap whiteIconBitmap = new WhiteIconProcess().convert(ctx, rawIconBitmap);
-                return callback.convert(ctx, whiteIconBitmap);
-            }
-        }.get("white_" + pkg);
-    }
-
-
-    public int getAppColor(final Context ctx, final String pkg, Converter<Bitmap, Integer> callback) {
+    public int getAppColor(final Context ctx, final String pkg, final Converter<Bitmap, Integer> callback) {
         return new AbstractCacheAspect<Integer>(appColorCache) {
             @Override
             Integer gen() {
@@ -85,7 +95,19 @@ public class IconCache {
                 return callback.convert(ctx, rawIconBitmap);
             }
         }.get(pkg);
-    }
+	}
+	
+	private static Bitmap whitenBitmap(final Context ctx, final Bitmap b) {
+		if (b == null) {
+			return null;
+		}
+
+		//scaleImage to 64dp
+		int dip2px = dip2px(ctx, 64);
+		return ImgUtils.scaleImage(ImgUtils.convertToTransparentAndWhite(b), dip2px, dip2px);
+	}
+
+	private static Icon createIconWithBitmap(final Context ctx, final Bitmap b) { return Icon.createWithBitmap(b); }
 
     public static class WhiteIconProcess implements Converter<Bitmap, Bitmap> {
         @Override
