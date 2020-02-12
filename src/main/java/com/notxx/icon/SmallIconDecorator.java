@@ -37,6 +37,8 @@ public class SmallIconDecorator extends NevoDecoratorService {
 
 	private static final String PHASE = "nevo.smallIcon.phase";
 
+	private static final String RES_PACKAGE = "com.notxx.icon.res";
+
 	private static int getBackgroundColor(Bitmap bitmap) {
 		int backgroundColor = Color.BLACK;
 		if (bitmap != null) {
@@ -57,17 +59,38 @@ public class SmallIconDecorator extends NevoDecoratorService {
 		}
 	}
 
+	private Icon defIcon;
+	private Resources resources;
 	private ArrayMap<String, String> embed;
 
 	@Override
 	protected void onConnected() {
 		// Log.d(TAG, "begin onConnected");
-		String[] array = getResources().getStringArray(R.array.decorator_icon_embed);
-		this.embed = new ArrayMap<>(array.length);
-		// Log.d(TAG, "array: " + array.length);
-		for (String s : array) {
-			this.embed.put(s, s.toLowerCase().replaceAll("\\.", "_"));
-			// Log.d(TAG, s);
+		defIcon = Icon.createWithResource(this, R.drawable.default_notification_icon);
+		// Log.d(TAG, "defIcon " + defIcon);
+		try {
+			final ApplicationInfo resApp = getPackageManager().getApplicationInfo(RES_PACKAGE, 0);
+			// Log.d(TAG, "resApp " + resApp);
+			resources = getResourcesForApplication(resApp);
+			Log.d(TAG, "resources " + resources);
+			Log.d(TAG, "resources stringId " + resources.getIdentifier("cn_com_weilaihui3", "string", RES_PACKAGE));
+			Log.d(TAG, "resources drawableId " + resources.getIdentifier("cn_com_weilaihui3", "drawable", RES_PACKAGE));
+			final int arrayId = resources.getIdentifier("decorator_icon_embed", "array", RES_PACKAGE);
+			Log.d(TAG, "arrayId " + arrayId);
+			if (arrayId != 0) {
+				final String[] array = resources.getStringArray(arrayId);
+				embed = new ArrayMap<>(array.length);
+				Log.d(TAG, "array: " + array.length);
+				for (String s : array) {
+					embed.put(s, s.toLowerCase().replaceAll("\\.", "_"));
+					// Log.d(TAG, s);
+				}
+			} else {
+				embed = null;
+			}
+		} catch (PackageManager.NameNotFoundException ign) {
+			resources = null;
+			embed = null;
 		}
 		// Log.d(TAG, "end onConnected");
 	}
@@ -118,47 +141,33 @@ public class SmallIconDecorator extends NevoDecoratorService {
 		}
 		
 		// smallIcon
-		if (phase < 3 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+		if (phase < 4 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 			Log.d(TAG, "begin modifying smallIcon");
-			Icon defIcon = Icon.createWithResource(this, R.drawable.default_notification_icon);
 			final IconCache cache = IconCache.getInstance();
 			int iconId = 0;
-			// if (channelId == null) {
-			// 	n.color = Color.RED;
-			// 	Log.d(TAG, "null extras " + extras);
-			// } else if (channelId.equals("com.huawei.android.pushagent")
-			// 		|| channelId.equals("com.huawei.android.pushagent.low")
-			// 		|| channelId.endsWith("::com.huawei.android.pushagent")
-			// 		|| channelId.endsWith("::com.huawei.android.pushagent.low")) {
-			// 	n.color = Color.GREEN;
-			// 	Log.d(TAG, "hwpush extras " + extras);
-			// } else {
-			// 	n.color = Color.BLUE;
-			// 	Log.d(TAG, "other extras " + extras);
-			// }
-			if (embed.containsKey(packageName)) {
+			if (phase < 4 && embed != null && embed.containsKey(packageName)) {
 				String key = embed.get(packageName);
 				// Log.d(TAG, "key: " + key);
-				iconId = getResources().getIdentifier(key, "drawable", getPackageName());
+				iconId = resources.getIdentifier(key, "drawable", RES_PACKAGE);
 				// Log.d(TAG, "iconId: " + iconId);
 				if (iconId > 0) { // has icon
 					final int ref = iconId;
 					Icon cached = cache.getIconCache(this, packageName, 
-							(ctx, pkg) -> ImgUtils.drawableToBitmap(getResources().getDrawable(ref)),
+							(ctx, pkg) -> ImgUtils.drawableToBitmap(resources.getDrawable(ref)),
 							(ctx, b) -> b);
 					if (cached != null)
 						n.setSmallIcon(cached);
 					else
 						iconId = -1;
 				}
-				int colorId = getResources().getIdentifier(key, "string", getPackageName());
+				int colorId = resources.getIdentifier(key, "string", RES_PACKAGE);
 				// Log.d(TAG, "colorId: " + colorId);
 				if (colorId != 0) // has color
-					n.color = Color.parseColor(getString(colorId));
+					n.color = Color.parseColor(resources.getString(colorId));
 			}
-			if (iconId > 0) { // do nothing
+			if (phase >= 3 || iconId > 0) { // do nothing
 				// Log.d(TAG, "do nothing iconId: " + iconId);
-			} else if ((iconId  = getResources().getIdentifier(MIPUSH_SMALL_ICON, "drawable", packageName)) != 0) { // has embed icon
+			} else if ((iconId  = appResources.getIdentifier(MIPUSH_SMALL_ICON, "drawable", packageName)) != 0) { // has embed icon
 				// Log.d(TAG, "mipush_small iconId: " + iconId);
 				n.setSmallIcon(Icon.createWithResource(packageName, iconId));
 			} else { // does not have icon
