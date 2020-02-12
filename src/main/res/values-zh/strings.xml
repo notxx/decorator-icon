@@ -16,6 +16,6 @@
   -->
 
 <resources>
-    <string name="decorator_miui_label">女娲石 - MIUI通知优化</string>
-    <string name="decorator_miui_description">优化MIUI推送的小图标，从五彩斑斓变成黑白分明</string>
+    <string name="decorator_icon_res_label">女娲石 - 小图标通知优化的图标包</string>
+    <string name="decorator_icon_res_description">为【女娲石 - 小图标通知优化】提供预定义的小图标和颜色</string>
 </resources>
