@@ -72,15 +72,15 @@ public class SmallIconDecorator extends NevoDecoratorService {
 			final ApplicationInfo resApp = getPackageManager().getApplicationInfo(RES_PACKAGE, 0);
 			// Log.d(TAG, "resApp " + resApp);
 			resources = getResourcesForApplication(resApp);
-			Log.d(TAG, "resources " + resources);
-			Log.d(TAG, "resources stringId " + resources.getIdentifier("cn_com_weilaihui3", "string", RES_PACKAGE));
-			Log.d(TAG, "resources drawableId " + resources.getIdentifier("cn_com_weilaihui3", "drawable", RES_PACKAGE));
+			// Log.d(TAG, "resources " + resources);
+			// Log.d(TAG, "resources stringId " + resources.getIdentifier("cn_com_weilaihui3", "string", RES_PACKAGE));
+			// Log.d(TAG, "resources drawableId " + resources.getIdentifier("cn_com_weilaihui3", "drawable", RES_PACKAGE));
 			final int arrayId = resources.getIdentifier("decorator_icon_embed", "array", RES_PACKAGE);
-			Log.d(TAG, "arrayId " + arrayId);
+			// Log.d(TAG, "arrayId " + arrayId);
 			if (arrayId != 0) {
 				final String[] array = resources.getStringArray(arrayId);
 				embed = new ArrayMap<>(array.length);
-				Log.d(TAG, "array: " + array.length);
+				// Log.d(TAG, "array: " + array.length);
 				for (String s : array) {
 					embed.put(s, s.toLowerCase().replaceAll("\\.", "_"));
 					// Log.d(TAG, s);
@@ -101,8 +101,7 @@ public class SmallIconDecorator extends NevoDecoratorService {
 		final Bundle extras = n.extras;
 		final ApplicationInfo appInfo = extras.getParcelable("android.appInfo");
 		final Resources appResources = getResourcesForApplication(appInfo);
-		final String packageName = evolving.getPackageName(),
-			channelId = n.getChannelId();
+		String packageName = evolving.getPackageName();
 		byte phase = extras.getByte(PHASE);
 		// Log.d(TAG, "package name: " + packageName);
 
@@ -120,29 +119,14 @@ public class SmallIconDecorator extends NevoDecoratorService {
 			Log.d(TAG, "skip modifying bigText");
 		}
 
-		// channel
-		if (phase < 2 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-			Log.d(TAG, "begin modifying channel");
-			final int labelRes = appInfo.labelRes;
-			final String label = (labelRes == 0 || appResources == null) ? appInfo.nonLocalizedLabel.toString() : appResources.getString(appInfo.labelRes);
-			// Log.d(TAG, "label: " + label + " channel: " + channelId);
-			final NotificationChannel channel = getNotificationChannel(packageName, Process.myUserHandle(), channelId);
-			final String newId = "::" + packageName + "::" + channelId,
-				newName = getString(R.string.decorator_channel_label, label, channel.getName());
-			// Log.d(TAG, "newId: " + newId + " newName: " + newName);
-			final List<NotificationChannel> channels = new ArrayList<>();
-			channels.add(cloneChannel(channel, newId, newName));
-			createNotificationChannels(packageName, Process.myUserHandle(), channels);
-			n.setChannelId(newId);
-			// Log.d(TAG, "original extras " + extras);
-			extras.putByte(PHASE, (byte)2);
-		} else {
-			Log.d(TAG, "skip modifying channel");
-		}
-		
 		// smallIcon
 		if (phase < 4 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 			Log.d(TAG, "begin modifying smallIcon");
+			if ("com.xiaomi.xmsf".equals(packageName)) {
+				packageName = extras.getString("target_package", null);
+				extras.putBoolean("miui.isGrayscaleIcon", true);
+			}
+
 			final IconCache cache = IconCache.getInstance();
 			int iconId = 0;
 			if (phase < 4 && embed != null && embed.containsKey(packageName)) {
@@ -162,8 +146,10 @@ public class SmallIconDecorator extends NevoDecoratorService {
 				}
 				int colorId = resources.getIdentifier(key, "string", RES_PACKAGE);
 				// Log.d(TAG, "colorId: " + colorId);
-				if (colorId != 0) // has color
+				if (colorId != 0) { // has color
 					n.color = Color.parseColor(resources.getString(colorId));
+				}
+				extras.putByte(PHASE, (byte)4);
 			}
 			if (phase >= 3 || iconId > 0) { // do nothing
 				// Log.d(TAG, "do nothing iconId: " + iconId);
@@ -186,18 +172,5 @@ public class SmallIconDecorator extends NevoDecoratorService {
 		}
 		Log.d(TAG, "end modifying");
 		return true;
-	}
-
-	@RequiresApi(Build.VERSION_CODES.O) private NotificationChannel cloneChannel(final NotificationChannel channel, final String id, final String label) {
-		final NotificationChannel clone = new NotificationChannel(id, label, channel.getImportance());
-		clone.setGroup(channel.getGroup());
-		clone.setDescription(channel.getDescription());
-		clone.setLockscreenVisibility(channel.getLockscreenVisibility());
-		clone.setSound(Optional.ofNullable(channel.getSound()).orElse(Settings.System.DEFAULT_NOTIFICATION_URI), channel.getAudioAttributes());
-		clone.setBypassDnd(channel.canBypassDnd());
-		clone.setLightColor(channel.getLightColor());
-		clone.setShowBadge(channel.canShowBadge());
-		clone.setVibrationPattern(channel.getVibrationPattern());
-		return clone;
 	}
 }
