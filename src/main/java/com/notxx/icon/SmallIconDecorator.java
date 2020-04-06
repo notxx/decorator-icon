@@ -39,7 +39,7 @@ public class SmallIconDecorator extends NevoDecoratorService {
 
 	private static final String RES_PACKAGE = "com.notxx.icon.res";
 
-	private static int getBackgroundColor(Bitmap bitmap) {
+	public static int getBackgroundColor(Bitmap bitmap) {
 		int backgroundColor = Color.BLACK;
 		if (bitmap != null) {
 			Palette palette = Palette.from(bitmap).generate();

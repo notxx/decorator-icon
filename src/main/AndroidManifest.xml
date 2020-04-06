@@ -17,9 +17,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools"
           package="com.notxx.icon" android:versionCode="1" android:versionName="1.0">
 
-    <application android:label="@string/decorator_icon_label" android:description="@string/decorator_icon_description"
-                 android:allowBackup="false" android:directBootAware="true" tools:targetApi="n"
-                 tools:ignore="GoogleAppIndexingWarning,MissingApplicationIcon">
+    <application
+        android:allowBackup="false"
+        android:directBootAware="true"
+        android:label="@string/decorator_icon_label"
+        android:description="@string/decorator_icon_description"
+        tools:targetApi="n"
+        tools:ignore="GoogleAppIndexingWarning,MissingApplicationIcon">
 
         <service
             android:name=".SmallIconDecorator"
@@ -31,9 +35,19 @@
             <intent-filter android:priority="-5">
                 <action android:name="com.oasisfeng.nevo.Decorator" />
             </intent-filter>
-            <!-- <meta-data android:name="packages" android:value="com.xiaomi.xmsf" /> -->
         </service>
 
+        <activity
+            android:name=".MainActivity"
+            android:label="@string/decorator_icon_label"
+            android:taskAffinity=""
+            android:process=":ui">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
