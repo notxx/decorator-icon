@@ -28,7 +28,13 @@
 		android:layout_weight="1" />
 
 	<ImageView
-		android:id="@+id/smallIcon"
+		android:id="@+id/embed"
+		android:layout_width="64px"
+		android:layout_height="64px"
+		android:layout_weight="1" />
+
+	<ImageView
+		android:id="@+id/mipush"
 		android:layout_width="64px"
 		android:layout_height="64px"
 		android:layout_weight="1" />

@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Bundle;
@@ -23,9 +24,19 @@ import top.trumeet.common.cache.IconCache;
 public class MainActivity extends Activity {
 	private static final String NOTIFICATION_ICON = "mipush_notification";
 	private static final String NOTIFICATION_SMALL_ICON = "mipush_small_notification";
+	private static final String RES_PACKAGE = "com.notxx.icon.res";
 
 	private ListView listView;
 	private IconCache cache;
+
+	private Context createPackageContext(String packageName) {
+		try {
+			return createPackageContext(packageName, 0);
+		} catch (IllegalArgumentException | PackageManager.NameNotFoundException ign) {
+			Log.d("inspect", "ex " + packageName);
+			return null;
+		}
+	}
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -34,6 +45,7 @@ public class MainActivity extends Activity {
 		cache = IconCache.getInstance();
 		final PackageManager manager = getPackageManager();
 		final List<PackageInfo> packages = manager.getInstalledPackages(0);
+		final Context context = createPackageContext(RES_PACKAGE);
 		listView.setAdapter(new BaseAdapter() {
 			@Override
 			public int getCount() {
@@ -71,22 +83,36 @@ public class MainActivity extends Activity {
 				// applicationLogo
 				ImageView appLogo = (ImageView) view.findViewById(R.id.appLogo);
 				appLogo.setImageDrawable(manager.getApplicationLogo(info.applicationInfo));
-				// smallIcon
-				ImageView smallIcon = (ImageView) view.findViewById(R.id.smallIcon);
+				// embedIcon
+				ImageView embedIcon = (ImageView) view.findViewById(R.id.embed);
+				// mipushIcon
+				ImageView mipushIcon = (ImageView) view.findViewById(R.id.mipush);
+				// gen
 				ImageView gen = (ImageView) view.findViewById(R.id.gen);
 				try {
-					final Context context = createPackageContext(info.packageName, 0);
-					int iconId;
-					if ((iconId  = context.getResources().getIdentifier(NOTIFICATION_SMALL_ICON, "drawable", info.packageName)) != 0) // has icon
-						smallIcon.setImageIcon(Icon.createWithResource(info.packageName, iconId));
-					else if ((iconId = context.getResources().getIdentifier(NOTIFICATION_ICON, "drawable", info.packageName)) != 0)
-						smallIcon.setImageIcon(Icon.createWithResource(info.packageName, iconId));
+					final Context appContext = createPackageContext(info.packageName, 0);
+					int iconId = 0, colorId = 0;
+					// embedIcon
+					final String key = info.packageName.toLowerCase().replaceAll("\\.", "_");
+					if (context != null && (iconId  = context.getResources().getIdentifier(key, "drawable", RES_PACKAGE)) != 0) // has icon
+						embedIcon.setImageIcon(Icon.createWithResource(RES_PACKAGE, iconId));
 					else
-						smallIcon.setImageIcon(null);
-					Icon iconCache = cache.getIconCache(context, info.packageName);
+						embedIcon.setImageIcon(null);
+					if (context != null && (colorId  = context.getResources().getIdentifier(key, "string", RES_PACKAGE)) != 0) // has icon
+						embedIcon.setColorFilter(Color.parseColor(context.getResources().getString(colorId)));
+					// mipushIcon
+					if ((iconId  = appContext.getResources().getIdentifier(NOTIFICATION_SMALL_ICON, "drawable", info.packageName)) != 0) // has icon
+						mipushIcon.setImageIcon(Icon.createWithResource(info.packageName, iconId));
+					else if ((iconId = appContext.getResources().getIdentifier(NOTIFICATION_ICON, "drawable", info.packageName)) != 0)
+						mipushIcon.setImageIcon(Icon.createWithResource(info.packageName, iconId));
+					else
+						mipushIcon.setImageIcon(null);
+					mipushIcon.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecorator.getBackgroundColor(b)));
+					// gen
+					Icon iconCache = cache.getIconCache(appContext, info.packageName);
 					if (iconCache != null) {
 						gen.setImageIcon(iconCache);
-						gen.setColorFilter(cache.getAppColor(context, info.packageName, (ctx, b) -> SmallIconDecorator.getBackgroundColor(b)));
+						gen.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecorator.getBackgroundColor(b)));
 					}
 				} catch (IllegalArgumentException | PackageManager.NameNotFoundException ign) { Log.d("inspect", "ex " + info.packageName);}
 				return view;

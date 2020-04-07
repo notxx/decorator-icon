@@ -61,7 +61,6 @@ public class SmallIconDecorator extends NevoDecoratorService {
 
 	private Icon defIcon;
 	private Resources resources;
-	private ArrayMap<String, String> embed;
 
 	@Override
 	protected void onConnected() {
@@ -73,24 +72,12 @@ public class SmallIconDecorator extends NevoDecoratorService {
 			// Log.d(TAG, "resApp " + resApp);
 			resources = getResourcesForApplication(resApp);
 			Log.d(TAG, "resources " + resources);
-			Log.d(TAG, "resources stringId " + resources.getIdentifier("cn_com_weilaihui3", "string", RES_PACKAGE));
-			Log.d(TAG, "resources drawableId " + resources.getIdentifier("cn_com_weilaihui3", "drawable", RES_PACKAGE));
-			final int arrayId = resources.getIdentifier("decorator_icon_embed", "array", RES_PACKAGE);
-			Log.d(TAG, "arrayId " + arrayId);
-			if (arrayId != 0) {
-				final String[] array = resources.getStringArray(arrayId);
-				embed = new ArrayMap<>(array.length);
-				Log.d(TAG, "array: " + array.length);
-				for (String s : array) {
-					embed.put(s, s.toLowerCase().replaceAll("\\.", "_"));
-					// Log.d(TAG, s);
-				}
-			} else {
-				embed = null;
-			}
+			// Log.d(TAG, "resources stringId " + resources.getIdentifier("cn_com_weilaihui3", "string", RES_PACKAGE));
+			// Log.d(TAG, "resources drawableId " + resources.getIdentifier("cn_com_weilaihui3", "drawable", RES_PACKAGE));
+			// final int arrayId = resources.getIdentifier("decorator_icon_embed", "array", RES_PACKAGE);
+			// Log.d(TAG, "arrayId " + arrayId);
 		} catch (PackageManager.NameNotFoundException ign) {
 			resources = null;
-			embed = null;
 		}
 		// Log.d(TAG, "end onConnected");
 	}
@@ -144,32 +131,35 @@ public class SmallIconDecorator extends NevoDecoratorService {
 		if (phase < 4 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 			Log.d(TAG, "begin modifying smallIcon");
 			final IconCache cache = IconCache.getInstance();
-			int iconId = 0;
-			if (phase < 4 && embed != null && embed.containsKey(packageName)) {
-				String key = embed.get(packageName);
-				// Log.d(TAG, "key: " + key);
-				iconId = resources.getIdentifier(key, "drawable", RES_PACKAGE);
+			int iconId = 0, colorId = 0;
+			String key = packageName.toLowerCase().replaceAll("\\.", "_");
+			if (resources != null && (iconId = resources.getIdentifier(key, "drawable", RES_PACKAGE)) != 0) { // has icon in icon-res
 				// Log.d(TAG, "iconId: " + iconId);
-				if (iconId > 0) { // has icon
-					final int ref = iconId;
-					Icon cached = cache.getIconCache(this, packageName, 
-							(ctx, pkg) -> ImgUtils.drawableToBitmap(resources.getDrawable(ref)),
-							(ctx, b) -> b);
-					if (cached != null)
-						n.setSmallIcon(cached);
-					else
-						iconId = -1;
-				}
-				int colorId = resources.getIdentifier(key, "string", RES_PACKAGE);
-				// Log.d(TAG, "colorId: " + colorId);
-				if (colorId != 0) // has color
-					n.color = Color.parseColor(resources.getString(colorId));
+				final int ref = iconId;
+				Icon cached = cache.getIconCache(this, packageName, 
+						(ctx, pkg) -> ImgUtils.drawableToBitmap(resources.getDrawable(ref)),
+						(ctx, b) -> b);
+				if (cached != null)
+					n.setSmallIcon(cached);
+				else
+					iconId = 0;
 			}
-			if (phase >= 3 || iconId > 0) { // do nothing
+			if (resources != null && (colorId = resources.getIdentifier(key, "string", RES_PACKAGE)) != 0) { // has color in icon-res
+				// Log.d(TAG, "colorId: " + colorId);
+				n.color = Color.parseColor(resources.getString(colorId));
+			}
+			if (iconId != 0) { // do nothing
 				// Log.d(TAG, "do nothing iconId: " + iconId);
 			} else if ((iconId  = appResources.getIdentifier(MIPUSH_SMALL_ICON, "drawable", packageName)) != 0) { // has embed icon
 				// Log.d(TAG, "mipush_small iconId: " + iconId);
-				n.setSmallIcon(Icon.createWithResource(packageName, iconId));
+				final int ref = iconId;
+				Icon cached = cache.getIconCache(this, packageName, 
+						(ctx, pkg) -> ImgUtils.drawableToBitmap(appResources.getDrawable(ref)),
+						(ctx, b) -> b);
+				if (cached != null)
+					n.setSmallIcon(cached);
+				else
+					iconId = 0;
 			} else { // does not have icon
 				// Log.d(TAG, "generate iconId: " + iconId);
 				Icon cached = cache.getIconCache(this, packageName);
@@ -178,6 +168,10 @@ public class SmallIconDecorator extends NevoDecoratorService {
 				} else {
 					n.setSmallIcon(defIcon);
 				}
+			}
+			if (colorId != 0) { // do nothing
+				// Log.d(TAG, "do nothing colorId: " + colorId);
+			} else {
 				n.color = cache.getAppColor(this, packageName, (ctx, b) -> getBackgroundColor(b));
 			}
 			extras.putByte(PHASE, (byte)3);
