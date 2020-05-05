@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
@@ -20,6 +21,7 @@ import android.widget.TextView;
 import java.util.List;
 
 import top.trumeet.common.cache.IconCache;
+import top.trumeet.common.utils.ImgUtils;
 
 public class MainActivity extends Activity {
 	private static final String NOTIFICATION_ICON = "mipush_notification";
@@ -87,6 +89,10 @@ public class MainActivity extends Activity {
 				ImageView embedIcon = (ImageView) view.findViewById(R.id.embed);
 				// mipushIcon
 				ImageView mipushIcon = (ImageView) view.findViewById(R.id.mipush);
+				// raw
+				ImageView raw = (ImageView) view.findViewById(R.id.raw);
+				// white
+				ImageView white = (ImageView) view.findViewById(R.id.white);
 				// gen
 				ImageView gen = (ImageView) view.findViewById(R.id.gen);
 				try {
@@ -108,11 +114,22 @@ public class MainActivity extends Activity {
 					else
 						mipushIcon.setImageIcon(null);
 					mipushIcon.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecorator.getBackgroundColor(b)));
+					// raw & white
+					Bitmap rawIcon = cache.getRawIconBitmap(appContext, info.packageName);
+					if (rawIcon != null) {
+						raw.setImageBitmap(rawIcon);
+						white.setImageBitmap(IconCache.whitenBitmap(MainActivity.this, rawIcon));
+					} else {
+						raw.setImageIcon(null);
+						white.setImageIcon(null);
+					}
 					// gen
 					Icon iconCache = cache.getIconCache(appContext, info.packageName);
 					if (iconCache != null) {
 						gen.setImageIcon(iconCache);
 						gen.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecorator.getBackgroundColor(b)));
+					} else {
+						gen.setImageIcon(null);
 					}
 				} catch (IllegalArgumentException | PackageManager.NameNotFoundException ign) { Log.d("inspect", "ex " + info.packageName);}
 				return view;

@@ -40,6 +40,18 @@
 		android:layout_weight="1" />
 
 	<ImageView
+		android:id="@+id/raw"
+		android:layout_width="64px"
+		android:layout_height="64px"
+		android:layout_weight="1" />
+
+	<ImageView
+		android:id="@+id/white"
+		android:layout_width="64px"
+		android:layout_height="64px"
+		android:layout_weight="1" />
+
+	<ImageView
 		android:id="@+id/gen"
 		android:layout_width="64px"
 		android:layout_height="64px"
