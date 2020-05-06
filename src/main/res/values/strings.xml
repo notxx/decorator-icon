@@ -16,7 +16,9 @@
   -->
 
 <resources>
-    <string name="decorator_icon_label">nevo-decorator-icon</string>
-    <string name="decorator_icon_description">make small-icon of MiPush/HWPush great again...</string>
+	<string name="decorator_icon_label">nevo-decorator-icon</string>
+	<string name="decorator_icon_description">make small-icon of MiPush/HWPush great again...</string>
+	<string name="decorator_direct_icon_label">nevo-decorator-icon (without cache)</string>
+	<string name="decorator_direct_icon_description">make small-icon of MiPush/HWPush great again...</string>
 	<string name="decorator_channel_label">%1$s - %2$s</string>
 </resources>

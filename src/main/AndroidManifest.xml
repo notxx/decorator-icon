@@ -15,39 +15,51 @@
   -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools"
-          package="com.notxx.icon" android:versionCode="1" android:versionName="1.0">
+		  package="com.notxx.icon" android:versionCode="1" android:versionName="1.0">
 
-    <application
-        android:allowBackup="false"
-        android:directBootAware="true"
-        android:label="@string/decorator_icon_label"
-        android:description="@string/decorator_icon_description"
-        tools:targetApi="n"
-        tools:ignore="GoogleAppIndexingWarning,MissingApplicationIcon">
+	<application
+		android:allowBackup="false"
+		android:directBootAware="true"
+		android:label="@string/decorator_icon_label"
+		android:description="@string/decorator_icon_description"
+		tools:targetApi="n"
+		tools:ignore="GoogleAppIndexingWarning,MissingApplicationIcon">
 
-        <service
-            android:name=".SmallIconDecorator"
-            android:directBootAware="true"
-            android:permission="com.oasisfeng.nevo.permission.BIND_DECORATOR_SERVICE"
-            android:process="com.oasisfeng.nevo.decorators"
-            android:label="@string/decorator_icon_label"
-            android:description="@string/decorator_icon_description">
-            <intent-filter android:priority="-5">
-                <action android:name="com.oasisfeng.nevo.Decorator" />
-            </intent-filter>
-        </service>
+		<service
+			android:name=".DirectSmallIconDecorator"
+			android:directBootAware="true"
+			android:permission="com.oasisfeng.nevo.permission.BIND_DECORATOR_SERVICE"
+			android:process="com.oasisfeng.nevo.decorators"
+			android:label="@string/decorator_direct_icon_label"
+			android:description="@string/decorator_direct_icon_description">
+			<intent-filter android:priority="-5">
+				<action android:name="com.oasisfeng.nevo.Decorator" />
+			</intent-filter>
+		</service>
 
-        <activity
-            android:name=".MainActivity"
-            android:label="@string/decorator_icon_label"
-            android:taskAffinity=""
-            android:process=":ui">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-    </application>
+		<service
+			android:name=".SmallIconDecorator"
+			android:directBootAware="true"
+			android:permission="com.oasisfeng.nevo.permission.BIND_DECORATOR_SERVICE"
+			android:process="com.oasisfeng.nevo.decorators"
+			android:label="@string/decorator_icon_label"
+			android:description="@string/decorator_icon_description">
+			<intent-filter android:priority="-5">
+				<action android:name="com.oasisfeng.nevo.Decorator" />
+			</intent-filter>
+		</service>
+
+		<activity
+			android:name=".MainActivity"
+			android:label="@string/decorator_icon_label"
+			android:taskAffinity=""
+			android:process=":ui">
+			<intent-filter>
+				<action android:name="android.intent.action.MAIN" />
+				<category android:name="android.intent.category.LAUNCHER" />
+				<category android:name="android.intent.category.DEFAULT" />
+			</intent-filter>
+		</activity>
+	</application>
 
 </manifest>

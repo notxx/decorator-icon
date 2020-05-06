@@ -16,7 +16,9 @@
   -->
 
 <resources>
-    <string name="decorator_icon_label">女娲石 - 小图标通知优化</string>
-    <string name="decorator_icon_description">优化MIUI/EMUI推送的小图标，从五彩斑斓变成黑白分明</string>
+	<string name="decorator_icon_label">女娲石 - 小图标通知优化</string>
+	<string name="decorator_icon_description">优化MIUI/EMUI推送的小图标，从五彩斑斓变成黑白分明</string>
+	<string name="decorator_direct_icon_label">女娲石 - 小图标通知优化 （不缓存）</string>
+	<string name="decorator_direct_icon_description">优化MIUI/EMUI推送的小图标，从五彩斑斓变成黑白分明</string>
 	<string name="decorator_channel_label">%1$s·%2$s</string>
 </resources>
