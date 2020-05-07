@@ -38,7 +38,7 @@
 		</service>
 
 		<service
-			android:name=".SmallIconDecorator"
+			android:name=".CachedSmallIconDecorator"
 			android:directBootAware="true"
 			android:permission="com.oasisfeng.nevo.permission.BIND_DECORATOR_SERVICE"
 			android:process="com.oasisfeng.nevo.decorators"

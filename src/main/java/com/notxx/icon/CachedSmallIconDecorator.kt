@@ -21,25 +21,25 @@ import com.oasisfeng.nevo.sdk.MutableStatusBarNotification
 import top.trumeet.common.cache.IconCache
 import top.trumeet.common.utils.ImgUtils
 
-class SmallIconDecorator:SmallIconDecoratorBase() {
+class CachedSmallIconDecorator:SmallIconDecoratorBase() {
 	private lateinit var defIcon:Icon
 
 	protected override fun onConnected() {
-		// Log.d(TAG, "begin onConnected")
+		// Log.d(T, "begin onConnected")
 		defIcon = Icon.createWithResource(this, R.drawable.default_notification_icon)
-		// Log.d(TAG, "defIcon " + defIcon)
-		// Log.d(TAG, "end onConnected")
+		// Log.d(T, "defIcon " + defIcon)
+		// Log.d(T, "end onConnected")
 	}
 
 	protected override fun applySmallIcon(evolving:MutableStatusBarNotification, n:MutableNotification) {
 		var resources:Resources?
 		try {
 			val resApp = getPackageManager().getApplicationInfo(RES_PACKAGE, 0)
-			// Log.d(TAG, "resApp " + resApp)
+			// Log.d(T, "resApp " + resApp)
 			resources = getResourcesForApplication(resApp)
-			Log.d(TAG, "resources " + resources)
-			// Log.d(TAG, "resources stringId " + resources.getIdentifier("cn_com_weilaihui3", "string", RES_PACKAGE))
-			// Log.d(TAG, "resources drawableId " + resources.getIdentifier("cn_com_weilaihui3", "drawable", RES_PACKAGE))
+			Log.d(T, "resources " + resources)
+			// Log.d(T, "resources stringId " + resources.getIdentifier("cn_com_weilaihui3", "string", RES_PACKAGE))
+			// Log.d(T, "resources drawableId " + resources.getIdentifier("cn_com_weilaihui3", "drawable", RES_PACKAGE))
 		} catch (ign:PackageManager.NameNotFoundException) {
 			resources = null
 		}
@@ -52,12 +52,11 @@ class SmallIconDecorator:SmallIconDecoratorBase() {
 		val key = packageName.toLowerCase().replace(("\\.").toRegex(), "_")
 
 		iconId = resources?.getIdentifier(key, "drawable", RES_PACKAGE)
-		if (iconId != null) { // has icon in icon-res
-			// Log.d(TAG, "iconId: " + iconId)
+		if (iconId != null && iconId != 0) { // has icon in icon-res
+			// Log.d(T, "res iconId: " + iconId)
 			val ref = iconId
 			val cached = cache.getIconCache(this, packageName,
-					{ _, _ -> ImgUtils.drawableToBitmap(resources!!.getDrawable(ref)) }, // TODO
-					{ _, b -> b })
+					raw = { _, _ -> ImgUtils.drawableToBitmap(resources!!.getDrawable(ref)) }) // TODO
 			if (cached != null) {
 				n.setSmallIcon(cached)
 			} else {
@@ -65,28 +64,27 @@ class SmallIconDecorator:SmallIconDecoratorBase() {
 			}
 		}
 		colorId = resources?.getIdentifier(key, "string", RES_PACKAGE)
-		if (colorId != null) { // has color in icon-res
-			// Log.d(TAG, "colorId: " + colorId)
+		if (colorId != null && colorId != 0) { // has color in icon-res
+			// Log.d(T, "res colorId: " + colorId)
 			n.color = Color.parseColor(resources!!.getString(colorId))
 		}
-		if (iconId != null) { // do nothing
-			// Log.d(TAG, "do nothing iconId: " + iconId)
+		if (iconId != null && iconId != 0) { // do nothing
+			// Log.d(T, "do nothing iconId: " + iconId)
 		} else {
 			iconId = appResources?.getIdentifier(MIPUSH_SMALL_ICON, "drawable", packageName)
-			if (iconId != null) { // has embed icon
-				// Log.d(TAG, "mipush_small iconId: " + iconId)
+			if (iconId != null && iconId != 0) { // has embed icon
+				// Log.d(T, "mipush_small iconId: " + iconId)
 				val ref = iconId
 				val cached = cache.getIconCache(this, packageName,
-						{ _, _ -> ImgUtils.drawableToBitmap(appResources!!.getDrawable(ref)) }, // TODO
-						{ _, b -> b })
+						raw = { _, _ -> ImgUtils.drawableToBitmap(appResources!!.getDrawable(ref)) }) // TODO
 				if (cached != null) {
 					n.setSmallIcon(cached)
 				} else {
 					iconId = null
 				}
 			}
-			if (iconId == null) { // does not have icon
-				// Log.d(TAG, "generate iconId: " + iconId)
+			if (iconId == null || iconId == 0) { // does not have icon
+				// Log.d(T, "generate icon")
 				val cached = cache.getIconCache(this, packageName)
 				if (cached != null) {
 					n.setSmallIcon(cached)
@@ -95,29 +93,16 @@ class SmallIconDecorator:SmallIconDecoratorBase() {
 				}
 			}
 		}
-		if (colorId != null) { // do nothing
-			// Log.d(TAG, "do nothing colorId: " + colorId)
+		if (colorId != null && colorId != 0) { // do nothing
+			// Log.d(T, "do nothing colorId: " + colorId)
 		} else {
 			n.color = cache.getAppColor(this, packageName, { _, b -> getBackgroundColor(b) })
 		}
 	}
 
-	@RequiresApi(Build.VERSION_CODES.O) private fun cloneChannel(channel:NotificationChannel, id:String, label:String):NotificationChannel {
-		val clone = NotificationChannel(id, label, channel.getImportance())
-		clone.setGroup(channel.getGroup())
-		clone.setDescription(channel.getDescription())
-		clone.setLockscreenVisibility(channel.getLockscreenVisibility())
-		clone.setSound(Optional.ofNullable(channel.getSound()).orElse(Settings.System.DEFAULT_NOTIFICATION_URI), channel.getAudioAttributes())
-		clone.setBypassDnd(channel.canBypassDnd())
-		clone.setLightColor(channel.getLightColor())
-		clone.setShowBadge(channel.canShowBadge())
-		clone.setVibrationPattern(channel.getVibrationPattern())
-		return clone
-	}
-
 	companion object {
 		private val MIPUSH_SMALL_ICON = "mipush_small_notification"
-		private val TAG = "SmallIconDecorator"
+		@JvmStatic private val T = "CachedSmallIconDecorator"
 		private val RES_PACKAGE = "com.notxx.icon.res"
 	}
 }

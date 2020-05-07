@@ -113,12 +113,13 @@ public class MainActivity extends Activity {
 						mipushIcon.setImageIcon(Icon.createWithResource(info.packageName, iconId));
 					else
 						mipushIcon.setImageIcon(null);
-					mipushIcon.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecorator.getBackgroundColor(b)));
+					mipushIcon.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecoratorBase.getBackgroundColor(b)));
 					// raw & white
 					Bitmap rawIcon = cache.getRawIconBitmap(appContext, info.packageName);
 					if (rawIcon != null) {
 						raw.setImageBitmap(rawIcon);
-						white.setImageBitmap(IconCache.whitenBitmap(MainActivity.this, rawIcon));
+						// white.setImageBitmap(IconCache.whitenBitmap(MainActivity.this, rawIcon));
+						white.setImageBitmap(SmallIconDecoratorBase.alphaize(rawIcon));
 					} else {
 						raw.setImageIcon(null);
 						white.setImageIcon(null);
@@ -127,7 +128,7 @@ public class MainActivity extends Activity {
 					Icon iconCache = cache.getIconCache(appContext, info.packageName);
 					if (iconCache != null) {
 						gen.setImageIcon(iconCache);
-						gen.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecorator.getBackgroundColor(b)));
+						gen.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecoratorBase.getBackgroundColor(b)));
 					} else {
 						gen.setImageIcon(null);
 					}

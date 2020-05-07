@@ -21,6 +21,6 @@ class DirectSmallIconDecorator:SmallIconDecoratorBase() {
 	}
 
 	companion object {
-		private val TAG = "DirectSmallIconDecorator"
+		@JvmStatic private val T = "DirectSmallIconDecorator"
 	}
 }

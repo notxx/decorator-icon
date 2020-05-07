@@ -48,17 +48,17 @@ abstract class SmallIconDecoratorBase:NevoDecoratorService() {
 		val channelId = n.getChannelId()
 		val labelRes = (appInfo?.labelRes) ?: 0
 		val label = if ((labelRes == 0 || appResources == null)) appInfo?.nonLocalizedLabel.toString() else appResources?.getString(labelRes)
-		// Log.d(TAG, "label: " + label + " channel: " + channelId)
+		// Log.d(T, "label: " + label + " channel: " + channelId)
 		val channel = getNotificationChannel(packageName, Process.myUserHandle(), channelId)
 		if (channel == null) return
 		val newId = "::" + packageName + "::" + channelId
 		val newName = getString(R.string.decorator_channel_label, label, channel.getName())
-		// Log.d(TAG, "newId: " + newId + " newName: " + newName)
+		// Log.d(T, "newId: " + newId + " newName: " + newName)
 		val channels = ArrayList<NotificationChannel>()
 		channels.add(cloneChannel(channel, newId, newName))
 		createNotificationChannels(packageName, Process.myUserHandle(), channels)
 		n.setChannelId(newId)
-		// Log.d(TAG, "original extras " + extras)
+		// Log.d(T, "original extras " + extras)
 	}
 
 	protected abstract fun applySmallIcon(evolving:MutableStatusBarNotification, n:MutableNotification)
@@ -67,32 +67,32 @@ abstract class SmallIconDecoratorBase:NevoDecoratorService() {
 		val n = evolving.getNotification()
 		val extras = n.extras
 		val phase = extras.getByte(EXTRAS_PHASE)
-		// Log.d(TAG, "package name: " + packageName)
+		// Log.d(T, "package name: " + packageName)
 		// bigText
 		if (phase < PHASE_BIG_TEXT && n.bigContentView == null) {
-			Log.d(TAG, "begin modifying bigText")
+			Log.d(T, "begin modifying bigText")
 			applyBigText(n, extras)
 			extras.putByte(EXTRAS_PHASE, PHASE_BIG_TEXT)
 		} else {
-			Log.d(TAG, "skip modifying bigText")
+			Log.d(T, "skip modifying bigText")
 		}
 		// channel
 		if (phase < PHASE_CHANNEL && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-			Log.d(TAG, "begin modifying channel")
+			Log.d(T, "begin modifying channel")
 			applyChannel(evolving, n, extras)
 			extras.putByte(EXTRAS_PHASE, PHASE_CHANNEL)
 		} else {
-			Log.d(TAG, "skip modifying channel")
+			Log.d(T, "skip modifying channel")
 		}
 		// smallIcon
 		if (phase < PHASE_SMALL_ICON && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-			Log.d(TAG, "begin modifying smallIcon")
+			Log.d(T, "begin modifying smallIcon")
 			applySmallIcon(evolving, n)
 			extras.putByte(EXTRAS_PHASE, PHASE_SMALL_ICON)
 		} else {
-			Log.d(TAG, "skip modifying smallIcon")
+			Log.d(T, "skip modifying smallIcon")
 		}
-		Log.d(TAG, "end modifying")
+		Log.d(T, "end modifying")
 		return true
 	}
 
@@ -110,7 +110,7 @@ abstract class SmallIconDecoratorBase:NevoDecoratorService() {
 	}
 
 	companion object {
-		private val TAG = "SmallIconDecoratorBase"
+		@JvmStatic private val T = "SmallIconDecoratorBase"
 
 		protected val EXTRAS_PHASE = "nevo.smallIcon.phase"
 		protected val PHASE_BIG_TEXT = 1.toByte()
@@ -127,6 +127,30 @@ abstract class SmallIconDecoratorBase:NevoDecoratorService() {
 				}
 			}
 			return backgroundColor
+		}
+
+		@JvmStatic fun alphaize(bitmap:Bitmap):Bitmap {
+			val width = bitmap.getWidth();
+			val height = bitmap.getHeight();
+			val pixels = IntArray(width * height);
+			bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+
+			for(i in 0 until height) {
+				for(j in 0 until width) {
+					val pos = width * i + j
+					val dot = pixels[pos]
+					val red = ((dot and 0x00FF0000) shr 16)
+					val green = ((dot and 0x0000FF00) shr 8)
+					val blue = (dot and 0x000000FF)
+					val gray = (red.toFloat() * 0.3 + green.toFloat() * 0.59 + blue.toFloat() * 0.11).toInt()
+					pixels[pos] = ((gray shl 24) or 0xFFFFFF)
+					// pixels[pos] = (0xFFFFFF)
+				}
+			}
+
+			val newBmp = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+			newBmp.setPixels(pixels, 0, width, 0, 0, width, height);
+			return newBmp;
 		}
 	}
 }

@@ -48,7 +48,7 @@ class IconCache private constructor() {
 	@JvmOverloads fun getIconCache(ctx:Context, pkg:String,
 			raw:((Context, String) -> Bitmap?) = ({ ctx, pkg -> getRawIconBitmap(ctx, pkg) }),
 			whiten:((Context, Bitmap?) -> Bitmap?) = ({ ctx, b -> whitenBitmap(ctx, b) }),
-			iconize:((Context, Bitmap?) -> Icon?) = ({ _, b -> Icon.createWithBitmap(b) })):Icon? {
+			iconize:((Context, Bitmap?) -> Icon?) = ({ _, b -> (if (b != null) Icon.createWithBitmap(b) else null) })):Icon? {
 		return object:AbstractCacheAspect<Icon?>(mIconMemoryCaches) {
 			override fun gen():Icon? {
 				val rawIcon = raw(ctx, pkg)
@@ -71,10 +71,6 @@ class IconCache private constructor() {
 		}.get(pkg)
 	}
 
-	// interface Converter<T, R> {
-	// 	fun convert(ctx:Context, b:T):R
-	// }
-	
 	private object Holder {
 		val instance = IconCache()
 	}

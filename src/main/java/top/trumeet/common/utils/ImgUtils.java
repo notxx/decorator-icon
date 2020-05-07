@@ -122,9 +122,9 @@ public class ImgUtils {
 		int right = 0;
 		int bottom = 0;
 
-		for (int h = 0; h < bitmap.getHeight(); h++) {
+		for (int h = 0; h < height; h++) {
 			boolean holdBlackPix = false;
-			for (int w = 0; w < bitmap.getWidth(); w++) {
+			for (int w = 0; w < width; w++) {
 				if (pixels[width * h + w] != Color.TRANSPARENT) {
 					holdBlackPix = true;
 					break;
@@ -137,9 +137,9 @@ public class ImgUtils {
 			top++;
 		}
 
-		for (int w = 0; w < bitmap.getWidth(); w++) {
+		for (int w = 0; w < width; w++) {
 			boolean holdBlackPix = false;
-			for (int h = 0; h < bitmap.getHeight(); h++) {
+			for (int h = 0; h < height; h++) {
 				if (pixels[width * h + w] != Color.TRANSPARENT) {
 					holdBlackPix = true;
 					break;
@@ -151,9 +151,9 @@ public class ImgUtils {
 			left++;
 		}
 
-		for (int w = bitmap.getWidth() - 1; w >= 0; w--) {
+		for (int w = left - 1; w >= 0; w--) {
 			boolean holdBlackPix = false;
-			for (int h = 0; h < bitmap.getHeight(); h++) {
+			for (int h = 0; h < height; h++) {
 				if (pixels[width * h + w] != Color.TRANSPARENT) {
 					holdBlackPix = true;
 					break;
@@ -165,9 +165,9 @@ public class ImgUtils {
 			right++;
 		}
 
-		for (int h = bitmap.getHeight() - 1; h >= 0; h--) {
+		for (int h = top - 1; h >= 0; h--) {
 			boolean holdBlackPix = false;
-			for (int w = 0; w < bitmap.getWidth(); w++) {
+			for (int w = 0; w < width; w++) {
 				if (pixels[width * h + w] != Color.TRANSPARENT) {
 					holdBlackPix = true;
 					break;
@@ -195,8 +195,8 @@ public class ImgUtils {
 		}
 
 
-		int cropHeight = bitmap.getHeight() - bottom - top;
-		int cropWidth = bitmap.getWidth() - left - right;
+		int cropHeight = height - bottom - top;
+		int cropWidth = width - left - right;
 
 		int padding = (cropHeight + cropWidth) / 16;
 
@@ -209,10 +209,18 @@ public class ImgUtils {
 			}
 		}
 
-		Bitmap newBmp = Bitmap.createBitmap(cropWidth + padding * 2, cropHeight + padding * 2, Bitmap.Config.ARGB_8888);
-		newBmp.setPixels(newPix, 0, cropWidth, padding, padding, cropWidth, cropHeight);
-
-		return newBmp;
+		try {
+			Bitmap newBmp = Bitmap.createBitmap(cropWidth + padding * 2, cropHeight + padding * 2, Bitmap.Config.ARGB_8888);
+			newBmp.setPixels(newPix, 0, cropWidth, padding, padding, cropWidth, cropHeight);
+			
+			return newBmp;
+		} catch (java.lang.IllegalArgumentException ex) {
+			Log.d("SmallIcon", width + ", " + height + " " + diff);
+			Log.d("SmallIcon", width + " " + left + " " + right);
+			Log.d("SmallIcon", height + " " + bottom + " " + top);
+			Log.d("SmallIcon", width + ", " + height + " " + cropWidth + ", " + cropHeight + " " + padding);
+			return null;
+		}
 	}
 
 	/**
