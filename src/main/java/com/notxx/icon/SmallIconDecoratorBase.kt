@@ -47,7 +47,7 @@ abstract class SmallIconDecoratorBase:NevoDecoratorService() {
 		val packageName = evolving.getPackageName()
 		val channelId = n.getChannelId()
 		val labelRes = (appInfo?.labelRes) ?: 0
-		val label = if ((labelRes == 0 || appResources == null)) appInfo?.nonLocalizedLabel.toString() else appResources?.getString(labelRes)
+		val label = if ((labelRes == 0 || appResources == null)) appInfo?.nonLocalizedLabel.toString() else appResources.getString(labelRes)
 		// Log.d(T, "label: " + label + " channel: " + channelId)
 		val channel = getNotificationChannel(packageName, Process.myUserHandle(), channelId)
 		if (channel == null) return
@@ -127,30 +127,6 @@ abstract class SmallIconDecoratorBase:NevoDecoratorService() {
 				}
 			}
 			return backgroundColor
-		}
-
-		@JvmStatic fun alphaize(bitmap:Bitmap):Bitmap {
-			val width = bitmap.getWidth();
-			val height = bitmap.getHeight();
-			val pixels = IntArray(width * height);
-			bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-
-			for(i in 0 until height) {
-				for(j in 0 until width) {
-					val pos = width * i + j
-					val dot = pixels[pos]
-					val red = ((dot and 0x00FF0000) shr 16)
-					val green = ((dot and 0x0000FF00) shr 8)
-					val blue = (dot and 0x000000FF)
-					val gray = (red.toFloat() * 0.3 + green.toFloat() * 0.59 + blue.toFloat() * 0.11).toInt()
-					pixels[pos] = ((gray shl 24) or 0xFFFFFF)
-					// pixels[pos] = (0xFFFFFF)
-				}
-			}
-
-			val newBmp = bitmap.copy(Bitmap.Config.ARGB_8888, true);
-			newBmp.setPixels(pixels, 0, width, 0, 0, width, height);
-			return newBmp;
 		}
 	}
 }

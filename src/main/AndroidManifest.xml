@@ -42,8 +42,8 @@
 			android:directBootAware="true"
 			android:permission="com.oasisfeng.nevo.permission.BIND_DECORATOR_SERVICE"
 			android:process="com.oasisfeng.nevo.decorators"
-			android:label="@string/decorator_icon_label"
-			android:description="@string/decorator_icon_description">
+			android:label="@string/decorator_cached_icon_label"
+			android:description="@string/decorator_cached_icon_description">
 			<intent-filter android:priority="-5">
 				<action android:name="com.oasisfeng.nevo.Decorator" />
 			</intent-filter>

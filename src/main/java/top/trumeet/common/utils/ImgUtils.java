@@ -3,9 +3,13 @@ package top.trumeet.common.utils;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.InsetDrawable;
+import android.graphics.drawable.VectorDrawable;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -151,7 +155,7 @@ public class ImgUtils {
 			left++;
 		}
 
-		for (int w = left - 1; w >= 0; w--) {
+		for (int w = width - 1; w >= left; w--) {
 			boolean holdBlackPix = false;
 			for (int h = 0; h < height; h++) {
 				if (pixels[width * h + w] != Color.TRANSPARENT) {
@@ -165,7 +169,7 @@ public class ImgUtils {
 			right++;
 		}
 
-		for (int h = top - 1; h >= 0; h--) {
+		for (int h = height - 1; h >= top; h--) {
 			boolean holdBlackPix = false;
 			for (int w = 0; w < width; w++) {
 				if (pixels[width * h + w] != Color.TRANSPARENT) {
@@ -215,7 +219,7 @@ public class ImgUtils {
 			
 			return newBmp;
 		} catch (java.lang.IllegalArgumentException ex) {
-			Log.d("SmallIcon", width + ", " + height + " " + diff);
+			Log.d("SmallIcon", "width, height " + width + ", " + height + " " + diff);
 			Log.d("SmallIcon", width + " " + left + " " + right);
 			Log.d("SmallIcon", height + " " + bottom + " " + top);
 			Log.d("SmallIcon", width + ", " + height + " " + cropWidth + ", " + cropHeight + " " + padding);
@@ -440,41 +444,58 @@ public class ImgUtils {
 
 	/**
 	 * 转换Drawable为Bitmap
+	 * 
 	 * @param drawable
+	 * 
 	 * @return
 	 */
 	public static Bitmap drawableToBitmap(Drawable drawable) {
-		if (drawable instanceof BitmapDrawable) {
-			return ((BitmapDrawable) drawable).getBitmap().copy(Bitmap.Config.ARGB_8888, true);
-		} else {
-			int w = (drawable.getIntrinsicWidth() <= 0) ? 1 : drawable.getIntrinsicWidth();
-			int h = (drawable.getIntrinsicHeight() <= 0) ? 1 : drawable.getIntrinsicHeight();
-			Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-			Canvas canvas = new Canvas(bitmap);
-			drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
-			drawable.draw(canvas);
-			return bitmap;
-		}
+		Rect bounds = drawable.getBounds();
+		return drawableToBitmap(drawable, drawable.getBounds(), 72, 72);
+	}
+
+	/**
+	 * 转换Drawable为Bitmap
+	 * 
+	 * @param drawable
+	 * @param drawBounds
+	 * @param w
+	 * @param h
+	 * 
+	 * @return
+	 */
+	public static Bitmap drawableToBitmap(Drawable drawable, Rect drawBounds, int w, int h) {
+		Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+		Canvas canvas = new Canvas(bitmap);
+		drawable.setBounds(drawBounds); // 切掉部分
+		drawable.draw(canvas);
+		return bitmap;
 	}
 
 	/**
 	 * 缩放Bitmap
 	 */
-	public static Bitmap scaleImage(Bitmap bm, int newWidth, int newHeight) {
-		if (bm == null) {
+	public static Bitmap scaleImage(Bitmap bitmap, Rect dest, boolean recycle) {
+		if (bitmap == null) {
 			return null;
 		}
-		int width = bm.getWidth();
-		int height = bm.getHeight();
-		float scaleWidth = ((float) newWidth) / width;
-		float scaleHeight = ((float) newHeight) / height;
+		int w = bitmap.getWidth(),
+			h = bitmap.getHeight(),
+			width = dest.width(),
+			height = dest.height();
+		if (dest.left == 0 && dest.top == 0 && w == width && h == height) { return bitmap; }
+		Log.d("SmallIcon", "scale dest " + dest + " " + width + ", " + height + " " + w + ", " + h);
+		float scaleWidth = ((float) width) / w;
+		float scaleHeight = ((float) height) / h;
+		Log.d("SmallIcon", "scale " + scaleWidth + ", " + scaleHeight);
 		Matrix matrix = new Matrix();
 		matrix.postScale(scaleWidth, scaleHeight);
-		Bitmap newbm = Bitmap.createBitmap(bm, 0, 0, width, height, matrix, true);
-		if (!bm.isRecycled()) {
-			bm.recycle();
+		Bitmap r = Bitmap.createBitmap(bitmap, dest.left, dest.top, w, h, matrix, true);
+		if (recycle && !bitmap.isRecycled()) {
+			bitmap.recycle();
 		}
-		return newbm;
+		Log.d("SmallIcon", "scaled " + r.getWidth() + ", " + r.getHeight());
+		return r;
 	}
 
 
