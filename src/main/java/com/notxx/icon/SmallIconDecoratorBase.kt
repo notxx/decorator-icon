@@ -23,10 +23,12 @@ import com.oasisfeng.nevo.sdk.MutableStatusBarNotification
 import com.oasisfeng.nevo.sdk.NevoDecoratorService
 
 abstract class SmallIconDecoratorBase:NevoDecoratorService() {
-	protected fun getResourcesForApplication(appInfo:ApplicationInfo?):Resources? {
-		if (appInfo == null) return null
+	protected fun getAppResources(appInfo:ApplicationInfo?):Resources? = getAppResources(appInfo?.packageName)
+
+	protected fun getAppResources(packageName:String?):Resources? {
+		if (packageName == null) return null
 		try {
-			return getPackageManager().getResourcesForApplication(appInfo)
+			return createPackageContext(packageName, 0)?.getResources()
 		} catch (ign:PackageManager.NameNotFoundException) {
 			return null
 		}
@@ -43,8 +45,8 @@ abstract class SmallIconDecoratorBase:NevoDecoratorService() {
 
 	protected fun applyChannel(evolving:MutableStatusBarNotification, n:MutableNotification, extras:Bundle) {
 		val appInfo:ApplicationInfo? = extras.getParcelable("android.appInfo")
-		val appResources = getResourcesForApplication(appInfo)
 		val packageName = evolving.getPackageName()
+		val appResources = getAppResources(packageName)
 		val channelId = n.getChannelId()
 		val labelRes = (appInfo?.labelRes) ?: 0
 		val label = if ((labelRes == 0 || appResources == null)) appInfo?.nonLocalizedLabel.toString() else appResources.getString(labelRes)
@@ -85,13 +87,13 @@ abstract class SmallIconDecoratorBase:NevoDecoratorService() {
 			Log.d(T, "skip modifying channel")
 		}
 		// smallIcon
-		if (phase < PHASE_SMALL_ICON && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+		// if (phase < PHASE_SMALL_ICON && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 			Log.d(T, "begin modifying smallIcon")
 			applySmallIcon(evolving, n)
-			extras.putByte(EXTRAS_PHASE, PHASE_SMALL_ICON)
-		} else {
-			Log.d(T, "skip modifying smallIcon")
-		}
+		// 	extras.putByte(EXTRAS_PHASE, PHASE_SMALL_ICON)
+		// } else {
+		// 	Log.d(T, "skip modifying smallIcon")
+		// }
 		Log.d(T, "end modifying")
 		return true
 	}

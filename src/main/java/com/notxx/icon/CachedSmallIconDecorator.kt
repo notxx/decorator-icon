@@ -32,20 +32,9 @@ class CachedSmallIconDecorator:SmallIconDecoratorBase() {
 	}
 
 	protected override fun applySmallIcon(evolving:MutableStatusBarNotification, n:MutableNotification) {
-		var resources:Resources?
-		try {
-			val resApp = getPackageManager().getApplicationInfo(RES_PACKAGE, 0)
-			// Log.d(T, "resApp " + resApp)
-			resources = getResourcesForApplication(resApp)
-			Log.d(T, "resources " + resources)
-			// Log.d(T, "resources stringId " + resources.getIdentifier("cn_com_weilaihui3", "string", RES_PACKAGE))
-			// Log.d(T, "resources drawableId " + resources.getIdentifier("cn_com_weilaihui3", "drawable", RES_PACKAGE))
-		} catch (ign:PackageManager.NameNotFoundException) {
-			resources = null
-		}
-		val appInfo:ApplicationInfo? = n.extras.getParcelable("android.appInfo")
-		val appResources = getResourcesForApplication(appInfo)
+		var resources = getAppResources(RES_PACKAGE)
 		val packageName = evolving.getPackageName()
+		val appResources = getAppResources(packageName)
 		val cache = IconCache.getInstance()
 		var iconId:Int?
 		var colorId:Int?
@@ -53,9 +42,9 @@ class CachedSmallIconDecorator:SmallIconDecoratorBase() {
 
 		iconId = resources?.getIdentifier(key, "drawable", RES_PACKAGE)
 		if (iconId != null && iconId != 0) { // has icon in icon-res
-			// Log.d(T, "res iconId: " + iconId)
+			// Log.d(T, "res $packageName iconId: $iconId")
 			val ref = iconId
-			val cached = cache.getIconCache(this, packageName,
+			val cached = cache.getIcon(this, packageName,
 					raw = { _, _ -> ImgUtils.drawableToBitmap(resources!!.getDrawable(ref)) }) // TODO
 			if (cached != null) {
 				n.setSmallIcon(cached)
@@ -69,14 +58,15 @@ class CachedSmallIconDecorator:SmallIconDecoratorBase() {
 			n.color = Color.parseColor(resources!!.getString(colorId))
 		}
 		if (iconId != null && iconId != 0) { // do nothing
-			// Log.d(T, "do nothing iconId: " + iconId)
+			// Log.d(T, "do nothing $packageName iconId: $iconId")
 		} else {
+			// Log.d(T, "$packageName appResources: $appResources")
 			iconId = appResources?.getIdentifier(MIPUSH_SMALL_ICON, "drawable", packageName)
 			if (iconId != null && iconId != 0) { // has embed icon
-				// Log.d(T, "mipush_small iconId: " + iconId)
+				// Log.d(T, "mipush_small $packageName iconId: $iconId")
 				val ref = iconId
-				val cached = cache.getIconCache(this, packageName,
-						raw = { _, _ -> ImgUtils.drawableToBitmap(appResources!!.getDrawable(ref)) }) // TODO
+				val cached = cache.getMiPushIcon(this, packageName,
+						{ _, _ -> ImgUtils.drawableToBitmap(appResources!!.getDrawable(ref)) })
 				if (cached != null) {
 					n.setSmallIcon(cached)
 				} else {
@@ -84,8 +74,8 @@ class CachedSmallIconDecorator:SmallIconDecoratorBase() {
 				}
 			}
 			if (iconId == null || iconId == 0) { // does not have icon
-				// Log.d(T, "generate icon")
-				val cached = cache.getIconCache(this, packageName)
+				// Log.d(T, "generate $packageName icon")
+				val cached = cache.getIcon(this, packageName)
 				if (cached != null) {
 					n.setSmallIcon(cached)
 				} else {
@@ -94,15 +84,16 @@ class CachedSmallIconDecorator:SmallIconDecoratorBase() {
 			}
 		}
 		if (colorId != null && colorId != 0) { // do nothing
-			// Log.d(T, "do nothing colorId: " + colorId)
+			// Log.d(T, "do nothing $packageName colorId: $colorId")
 		} else {
+			// Log.d(T, "generate $packageName color")
 			n.color = cache.getAppColor(this, packageName, { _, b -> getBackgroundColor(b) })
 		}
 	}
 
 	companion object {
-		private val MIPUSH_SMALL_ICON = "mipush_small_notification"
-		@JvmStatic private val T = "CachedSmallIconDecorator"
+		@JvmField public val MIPUSH_SMALL_ICON = "mipush_small_notification"
+		private val T = "CachedSmallIconDecorator"
 		private val RES_PACKAGE = "com.notxx.icon.res"
 	}
 }

@@ -9,52 +9,58 @@
 
 	<TextView
 		android:id="@+id/appName"
-		android:layout_width="200px"
-		android:layout_height="64px"
+		android:layout_width="200dp"
+		android:layout_height="24dp"
 		android:layout_weight="1"
 		android:gravity="center_vertical"
 		tools:text="YouTube" />
 
 	<ImageView
 		android:id="@+id/appIcon"
-		android:layout_width="64px"
-		android:layout_height="64px"
+		android:layout_width="24dp"
+		android:layout_height="24dp"
 		android:layout_weight="1" />
 
 	<ImageView
 		android:id="@+id/appLogo"
-		android:layout_width="64px"
-		android:layout_height="64px"
+		android:layout_width="24dp"
+		android:layout_height="24dp"
 		android:layout_weight="1" />
 
 	<ImageView
 		android:id="@+id/embed"
-		android:layout_width="64px"
-		android:layout_height="64px"
+		android:layout_width="24dp"
+		android:layout_height="24dp"
 		android:layout_weight="1" />
 
 	<ImageView
 		android:id="@+id/mipush"
-		android:layout_width="64px"
-		android:layout_height="64px"
+		android:layout_width="24dp"
+		android:layout_height="24dp"
 		android:layout_weight="1" />
 
 	<ImageView
-		android:id="@+id/raw"
-		android:layout_width="64px"
-		android:layout_height="64px"
+		android:id="@+id/background"
+		android:layout_width="24dp"
+		android:layout_height="24dp"
 		android:layout_weight="1" />
 
 	<ImageView
-		android:id="@+id/white"
-		android:layout_width="64px"
-		android:layout_height="64px"
+		android:id="@+id/foreground"
+		android:layout_width="24dp"
+		android:layout_height="24dp"
+		android:layout_weight="1" />
+
+	<ImageView
+		android:id="@+id/whiten"
+		android:layout_width="24dp"
+		android:layout_height="24dp"
 		android:layout_weight="1" />
 
 	<ImageView
 		android:id="@+id/gen"
-		android:layout_width="64px"
-		android:layout_height="64px"
+		android:layout_width="24dp"
+		android:layout_height="24dp"
 		android:layout_weight="1" />
 
 </LinearLayout>

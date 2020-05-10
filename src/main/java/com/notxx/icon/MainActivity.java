@@ -6,8 +6,9 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageInfo;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.Icon;
@@ -24,6 +25,10 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import java.util.List;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import top.trumeet.common.cache.IconCache;
 import top.trumeet.common.utils.ImgUtils;
@@ -32,25 +37,40 @@ public class MainActivity extends Activity {
 	private class PackagesAdapter extends BaseAdapter implements AdapterView.OnItemClickListener {
 		private final IconCache cache = IconCache.getInstance();
 		private final PackageManager manager;
-		private final List<PackageInfo> packages;
+		private final List<Map.Entry<CharSequence, ActivityInfo>> infos = new LinkedList<>();
 		private final Context context;
 
-		PackagesAdapter(PackageManager manager, List<PackageInfo> packages, Context context) {
+		PackagesAdapter(PackageManager manager, Context context) {
+			// manager
 			this.manager = manager;
-			this.packages = packages;
+			// infos
+			Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+			mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+			List<ResolveInfo> query = manager.queryIntentActivities(mainIntent, 0);
+			SortedMap<CharSequence, ActivityInfo> map = new TreeMap<>();
+			for (ResolveInfo info : query) {
+				ActivityInfo ai = info.activityInfo;
+				CharSequence label = manager.getApplicationLabel(ai.applicationInfo);
+				map.put(label, ai);
+			}
+			for (Map.Entry<CharSequence, ActivityInfo> entry : map.entrySet()) {
+				this.infos.add(entry);
+			}
 			this.context = context;
 		}
 
 		public void onItemClick(AdapterView parent, View v, int position, long id) {
-			PackageInfo info = getItem(position);
+			Map.Entry<CharSequence, ActivityInfo> item = getItem(position);
+			CharSequence label = item.getKey();
+			ActivityInfo info = item.getValue();
 			// Log.d("SmallIcon", "item click");
 			Notification.Builder n = new Notification.Builder(MainActivity.this, CHANNEL_ID)
 					.setSmallIcon(R.drawable.default_notification_icon)
-					.setContentTitle(manager.getApplicationLabel(info.applicationInfo))
+					.setContentTitle(label)
 					.setContentText(info.packageName);
-			Icon iconCache = cache.getIconCache(MainActivity.this, info.packageName);
-			if (iconCache != null) { n.setSmallIcon(iconCache); }
-			int color = cache.getAppColor(MainActivity.this, info.packageName);
+			Icon cached = cache.getIcon(MainActivity.this, info.packageName);
+			if (cached != null) { n.setSmallIcon(cached); }
+			int color = cache.getAppColor(MainActivity.this, info.packageName, (ctx, b) -> SmallIconDecoratorBase.getBackgroundColor(b));
 			if (color != -1) {
 				n.setColor(color);
 				n.setColorized(false);
@@ -61,17 +81,17 @@ public class MainActivity extends Activity {
 
 		@Override
 		public int getCount() {
-			return packages.size();
+			return this.infos.size();
 		}
 
 		@Override
-		public PackageInfo getItem(int position) {
-			return packages.get(position);
+		public Map.Entry<CharSequence, ActivityInfo> getItem(int position) {
+			return this.infos.get(position);
 		}
 
 		@Override
 		public long getItemId(int position) {
-			return packages.get(position).hashCode();
+			return this.infos.get(position).hashCode();
 		}
 
 		@Override
@@ -85,10 +105,12 @@ public class MainActivity extends Activity {
 				view = convertView;
 			}
 
-			PackageInfo info = getItem(position);
+			Map.Entry<CharSequence, ActivityInfo> item = getItem(position);
+			CharSequence label = item.getKey();
+			ActivityInfo info = item.getValue();
 			// applicationLabel
 			TextView appName = (TextView) view.findViewById(R.id.appName);
-			appName.setText(manager.getApplicationLabel(info.applicationInfo));
+			appName.setText(label);
 			// applicationIcon
 			ImageView appIcon = (ImageView) view.findViewById(R.id.appIcon);
 			appIcon.setImageDrawable(manager.getApplicationIcon(info.applicationInfo));
@@ -99,10 +121,12 @@ public class MainActivity extends Activity {
 			ImageView embedIcon = (ImageView) view.findViewById(R.id.embed);
 			// mipushIcon
 			ImageView mipushIcon = (ImageView) view.findViewById(R.id.mipush);
-			// raw
-			ImageView raw = (ImageView) view.findViewById(R.id.raw);
-			// white
-			ImageView white = (ImageView) view.findViewById(R.id.white);
+			// background
+			ImageView background = (ImageView) view.findViewById(R.id.background);
+			// foreground
+			ImageView foreground = (ImageView) view.findViewById(R.id.foreground);
+			// whiten
+			ImageView whiten = (ImageView) view.findViewById(R.id.whiten);
 			// gen
 			ImageView gen = (ImageView) view.findViewById(R.id.gen);
 			try {
@@ -117,25 +141,35 @@ public class MainActivity extends Activity {
 				if (context != null && (colorId  = context.getResources().getIdentifier(key, "string", RES_PACKAGE)) != 0) // has icon
 					embedIcon.setColorFilter(Color.parseColor(context.getResources().getString(colorId)));
 				// mipushIcon
-				if ((iconId  = appContext.getResources().getIdentifier(NOTIFICATION_SMALL_ICON, "drawable", info.packageName)) != 0) // has icon
-					mipushIcon.setImageIcon(Icon.createWithResource(info.packageName, iconId));
-				else if ((iconId = appContext.getResources().getIdentifier(NOTIFICATION_ICON, "drawable", info.packageName)) != 0)
-					mipushIcon.setImageIcon(Icon.createWithResource(info.packageName, iconId));
-				else
+				// Log.d("SmallIcon", "appResources: " + appContext.getResources());
+				if ((iconId  = appContext.getResources().getIdentifier(CachedSmallIconDecorator.MIPUSH_SMALL_ICON, "drawable", info.packageName)) != 0) { // has icon
+				// 	mipushIcon.setImageIcon(Icon.createWithResource(info.packageName, iconId));
+				// else if ((iconId = appContext.getResources().getIdentifier(NOTIFICATION_ICON, "drawable", info.packageName)) != 0)
+				// 	mipushIcon.setImageIcon(Icon.createWithResource(info.packageName, iconId));
+					final int ref = iconId;
+					mipushIcon.setImageIcon(cache.getMiPushIcon(MainActivity.this, info.packageName, (ctx, b) -> ImgUtils.drawableToBitmap(appContext.getResources().getDrawable(ref))));
+				} else
 					mipushIcon.setImageIcon(null);
 				mipushIcon.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecoratorBase.getBackgroundColor(b)));
-				// raw & white
-				Bitmap rawIcon = cache.getIconForeground(appContext, info.packageName);
-				if (rawIcon != null) {
-					raw.setImageBitmap(rawIcon);
-					// white.setImageBitmap(IconCache.whitenBitmap(MainActivity.this, rawIcon));
-					white.setImageBitmap(IconCache.alphaize(rawIcon));
+				// background
+				Bitmap iconBackground = cache.getIconBackground(appContext, info.packageName);
+				if (iconBackground != null) {
+					// IconCache.removeBackground(iconBackground, Color.RED); // TODO 测试移除背景
+					background.setImageBitmap(iconBackground);
 				} else {
-					raw.setImageIcon(null);
-					white.setImageIcon(null);
+					background.setImageIcon(null);
+				}
+				// foreground & white
+				Bitmap iconForeground = cache.getIconForeground(appContext, info.packageName);
+				if (iconForeground != null) {
+					foreground.setImageBitmap(iconForeground);
+					whiten.setImageBitmap(IconCache.alphaize(iconForeground));
+				} else {
+					foreground.setImageIcon(null);
+					whiten.setImageIcon(null);
 				}
 				// gen
-				Icon iconCache = cache.getIconCache(MainActivity.this, info.packageName);
+				Icon iconCache = cache.getIcon(MainActivity.this, info.packageName);
 				if (iconCache != null) {
 					gen.setImageIcon(iconCache);
 					gen.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecoratorBase.getBackgroundColor(b)));
@@ -147,8 +181,7 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	private static final String NOTIFICATION_ICON = "mipush_notification";
-	private static final String NOTIFICATION_SMALL_ICON = "mipush_small_notification";
+	private static final String MIPUSH_SMALL_ICON = "mipush_small_notification";
 	private static final String RES_PACKAGE = "com.notxx.icon.res";
 	private static final String CHANNEL_ID = "test_channel";
 
@@ -172,9 +205,8 @@ public class MainActivity extends Activity {
 
 		listView = new ListView(this);
 		final PackageManager manager = getPackageManager();
-		final List<PackageInfo> packages = manager.getInstalledPackages(0);
 		final Context context = createPackageContext(RES_PACKAGE);
-		PackagesAdapter adapter = new PackagesAdapter(manager, packages, context);
+		PackagesAdapter adapter = new PackagesAdapter(manager, context);
 		listView.setOnItemClickListener(adapter);
 		listView.setAdapter(adapter);
 		setContentView(listView);

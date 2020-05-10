@@ -451,7 +451,7 @@ public class ImgUtils {
 	 */
 	public static Bitmap drawableToBitmap(Drawable drawable) {
 		Rect bounds = drawable.getBounds();
-		return drawableToBitmap(drawable, drawable.getBounds(), 72, 72);
+		return drawableToBitmap(drawable, new Rect(0, 0, 72, 72), 72, 72); // TODO
 	}
 
 	/**
