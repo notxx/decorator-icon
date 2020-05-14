@@ -1,5 +1,6 @@
 package top.trumeet.common.cache
 
+import kotlin.math.max
 import kotlin.math.hypot
 
 import android.content.Context
@@ -44,26 +45,72 @@ class IconCache private constructor() {
 		return object:AbstractCacheAspect<Bitmap>(foregroundCache) {
 			override fun gen():Bitmap? {
 				try {
-					// Log.d("SmallIcon", "foreground $pkg")
+					// Log.d(T, "foreground $pkg")
 					val icon = ctx.getPackageManager().getApplicationIcon(pkg)
 					var bitmap:Bitmap?
 					if (icon is AdaptiveIconDrawable) {
-						// Log.d("SmallIcon", "foreground $BOUNDS")
-						bitmap = ImgUtils.drawableToBitmap(icon.getForeground(), ADAPTIVE_CANVAS, BOUNDS.width(), BOUNDS.height())
+						// Log.d(T, "foreground $pkg $SIZE")
+						val recommand = { width:Int -> if (width > 0) width * 72 / 108 else 72 }
+						val slice = { width:Int -> if (width > 0) width * -18 / 72 else -18 }
+						bitmap = render(icon.getForeground(), recommand, recommand,
+								setBounds = { d, width, height -> val w = slice(width); val h = slice(height); d.setBounds(w, h, width - w, height - h) })
 					} else {
-						// Log.d("SmallIcon", "legacy foreground ${icon.getIntrinsicWidth()}, ${icon.getIntrinsicHeight()}")
-						bitmap = ImgUtils.drawableToBitmap(icon, BOUNDS, BOUNDS.width(), BOUNDS.height())
-						if (removeBackground(bitmap)) {
-							val temp = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
-							val canvas = Canvas(temp);
-							canvas.drawBitmap(bitmap, null, Rect(-20, -20, 52, 52), null)
-							bitmap.recycle()
-							bitmap = temp
+						// Log.d(T, "legacy foreground $pkg $SIZE ${icon.getIntrinsicWidth()}, ${icon.getIntrinsicHeight()}")
+						bitmap = render(icon)
+					}
+					val width = bitmap.getWidth(); val height = bitmap.getHeight()
+					val pixels = IntArray(width * height)
+					bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+					removeBackground(pkg, pixels, width, height)
+					bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+					var top = height; var bottom = 0
+					var left = width; var right = 0
+					top@ for (i in 0 until height) {
+						for (j in 0 until width) {
+							val pos = width * i + j // 偏移
+							val pixel = pixels[pos] // 颜色值
+							if (pixel != Color.TRANSPARENT) { top = i; break@top }
 						}
+					}
+					bottom@ for (i in height - 1 downTo 0) {
+						for (j in 0 until width) {
+							val pos = width * i + j // 偏移
+							val pixel = pixels[pos] // 颜色值
+							if (pixel != Color.TRANSPARENT) { bottom = i; break@bottom }
+						}
+					}
+					left@ for (j in 0 until width) {
+						for (i in 0 until height) {
+							val pos = width * i + j // 偏移
+							val pixel = pixels[pos] // 颜色值
+							if (pixel != Color.TRANSPARENT) { left = j; break@left }
+						}
+					}
+					right@ for (j in width - 1 downTo 0) {
+						for (i in 0 until height) {
+							val pos = width * i + j // 偏移
+							val pixel = pixels[pos] // 颜色值
+							if (pixel != Color.TRANSPARENT) { right = j; break@right }
+						}
+					}
+					// if (pkg == "com.apple.android.music") {
+					// 	Log.d(T, "l,r,t,b = $left,$right,$top,$bottom")
+					// }
+					if ((left != 0 || right != width - 1 || top != 0 || bottom != height - 1) &&
+							(left < right && top < bottom)) {
+						val w = right - left; val h = bottom - top
+						val side = max(w, h)
+						val l = left - (side - w) / 2
+						val t = top - (side - h) / 2
+						val temp = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888);
+						val canvas = Canvas(temp);
+						canvas.drawBitmap(bitmap, Rect(l, t, l + side, t + side), Rect(0, 0, side, side), null)
+						bitmap.recycle()
+						bitmap = temp
 					}
 					return bitmap
 				} catch (ignored:Exception) {
-					Log.d("SmallIcon", "foreground", ignored)
+					Log.d(T, "foreground", ignored)
 					return null
 				}
 			}
@@ -77,12 +124,15 @@ class IconCache private constructor() {
 				try {
 					val icon = ctx.getPackageManager().getApplicationIcon(pkg)
 					return if (icon is AdaptiveIconDrawable) {
-						ImgUtils.drawableToBitmap(icon.getBackground(), ADAPTIVE_CANVAS, BOUNDS.width(), BOUNDS.height())
+						val recommand = { width:Int -> if (width > 0) width * 72 / 108 else 72 }
+						val slice = { width:Int -> if (width > 0) width * -18 / 72 else -18 }
+						render(icon.getBackground(), recommand, recommand,
+								setBounds = { d, width, height -> val w = slice(width); val h = slice(height); d.setBounds(w, h, width - w, height - h) })
 					} else {
-						ImgUtils.drawableToBitmap(icon, BOUNDS, BOUNDS.width(), BOUNDS.height())
+						render(icon)
 					}
 				} catch (ignored:Exception) {
-					Log.d("SmallIcon", "background", ignored)
+					Log.d(T, "background", ignored)
 					return null
 				}
 			}
@@ -90,12 +140,12 @@ class IconCache private constructor() {
 	}
 
 	@JvmOverloads fun getIcon(ctx:Context, pkg:String,
-			raw:((Context, String) -> Bitmap?) = ({ ctx, pkg -> getIconForeground(ctx, pkg) }),
+			gen:((Context, String) -> Bitmap?) = ({ ctx, pkg -> getIconForeground(ctx, pkg) }),
 			whiten:((Context, Bitmap?) -> Bitmap?) = ({ _, b -> alphaize(b) }),
 			iconize:((Context, Bitmap?) -> Icon?) = ({ _, b -> (if (b != null) Icon.createWithBitmap(b) else null) })):Icon? {
 		return object:AbstractCacheAspect<Icon?>(iconCache) {
 			override fun gen():Icon? {
-				var bitmap = raw(ctx, pkg)
+				var bitmap = gen(ctx, pkg)
 				if (bitmap == null) { return null }
 				bitmap = whiten(ctx, bitmap)
 				return iconize(ctx, bitmap)
@@ -103,23 +153,23 @@ class IconCache private constructor() {
 		}.get(pkg)
 	}
 
-	@JvmOverloads fun getMiPushIcon(ctx:Context, pkg:String,
-			gen:((Context, String) -> Bitmap?),
+	@JvmOverloads fun getMiPushIcon(ctx:Context, iconId:Int, pkg:String,
+			gen:((Context, Int) -> Bitmap?) = { ctx, iconId -> render(ctx.getResources().getDrawable(iconId)) },
 			whiten:((Context, Bitmap?) -> Bitmap?) = ({ _, b -> alphaize(b) }),
 			iconize:((Context, Bitmap?) -> Icon?) = ({ _, b -> (if (b != null) Icon.createWithBitmap(b) else null) })):Icon? {
 		return object:AbstractCacheAspect<Icon?>(mipushCache) {
 			override fun gen():Icon? {
-				var bitmap = gen(ctx, pkg)
+				var bitmap = gen(ctx, iconId)
 				if (bitmap == null) { return null }
 				bitmap = whiten(ctx, bitmap)
 				val icon = iconize(ctx, bitmap)
-				Log.d("SmallIcon", "icon: $icon")
+				// Log.d(T, "icon: $icon")
 				return icon
 			}
 		}.get(pkg)
 	}
 
-	@JvmOverloads fun getAppColor(ctx:Context, pkg:String,
+	fun getAppColor(ctx:Context, pkg:String,
 			convert:((Context, Bitmap?) -> Int)):Int {
 		return object:AbstractCacheAspect<Int>(appColorCache) {
 			override fun gen():Int {
@@ -137,6 +187,8 @@ class IconCache private constructor() {
 	}
 
 	companion object {
+		private val T = "SmallIcon"
+		@JvmField public val SIZE = 144 // 建议的边长
 		private val ADAPTIVE_CANVAS = Rect(-18, -18, 90, 90) // TODO density
 		@JvmStatic public val BOUNDS = Rect(0, 0, 72, 72) // TODO density
 
@@ -144,14 +196,38 @@ class IconCache private constructor() {
 			return Holder.instance
 		}
 
+		/**
+		 * 转换Drawable为Bitmap
+		 *
+		 * @param drawable
+		 *
+		 * @return
+		 */
+		@JvmStatic fun render(drawable:Drawable,
+				recommandWidth:((Int) -> Int) = { width -> if (width > 0) width else SIZE },
+				recommandHeight:((Int) -> Int) = { height -> if (height > 0) height else SIZE },
+				createBitmap:((Int, Int) -> Bitmap) = { width, height -> Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888) },
+				setBounds:((Drawable, Int, Int) -> Unit) = { d, width, height -> d.setBounds(0, 0, width, height) }):Bitmap {
+			var width = recommandWidth(drawable.getIntrinsicWidth())
+			var height = recommandHeight(drawable.getIntrinsicHeight())
+			val bitmap = createBitmap(width, height)
+			val canvas = Canvas(bitmap)
+			setBounds(drawable, width, height)
+			drawable.draw(canvas)
+			return bitmap
+		}
+
 		@JvmStatic fun whitenBitmap(ctx:Context, b:Bitmap?):Bitmap? {
-			if (b == null) {
-				return null
-			}
+			if (b == null) { return null }
+			return whiten(ctx, b)
+		}
+
+		@JvmStatic fun whiten(ctx:Context, b:Bitmap):Bitmap {
 			val density = ctx.getResources().getDisplayMetrics().density
 			return ImgUtils.convertToTransparentAndWhite(b, density)
 		}
 
+		// 将图像灰度化然后转化为透明度形式
 		@JvmStatic fun alphaize(bitmap:Bitmap?):Bitmap? {
 			if (bitmap == null) { return null }
 
@@ -178,80 +254,113 @@ class IconCache private constructor() {
 			return r
 		}
 
-		fun blend(pixels:IntArray, width:Int, height:Int) {
-			for (i in 0 until height) {
-				for (j in 0 until width) {
-					val pos = width * i + j // 偏移
-					val pixel = pixels[pos] // 颜色值
-					val alpha = ((pixel.toLong() and 0xFF000000) shr 24).toFloat() // 透明度通道
-					val red = ((pixel and 0x00FF0000) shr 16).toFloat() // 红色通道
-					val green = ((pixel and 0x0000FF00) shr 8).toFloat() // 绿色通道
-					val blue = (pixel and 0x000000FF).toFloat() // 蓝色通道
-					pixels[pos] = (0xFF000000 or // 透明度
-							((red * alpha / 0xFF).toLong() shl 16) or
-							((green * alpha / 0xFF).toLong() shl 8) or
-							(blue * alpha / 0xFF).toLong()).toInt()
+		// 混合颜色
+		fun blend(pixels:IntArray) {
+			for (pos in 0 until pixels.size) {
+				val pixel = pixels[pos] // 颜色值
+				if (pixel == Color.TRANSPARENT) continue
+				val alpha = ((pixel.toLong() and 0xFF000000) shr 24).toFloat() // 透明度通道
+				val red = ((pixel and 0x00FF0000) shr 16).toFloat() // 红色通道
+				val green = ((pixel and 0x0000FF00) shr 8).toFloat() // 绿色通道
+				val blue = (pixel and 0x000000FF).toFloat() // 蓝色通道
+				pixels[pos] = (0xFF000000 or // 透明度
+						((red * alpha / 0xFF + (0xFF - alpha)).toLong() shl 16) or
+						((green * alpha / 0xFF + (0xFF - alpha)).toLong() shl 8) or
+						(blue * alpha / 0xFF + (0xFF - alpha)).toLong()).toInt()
+			}
+		}
+
+		fun blend(pixel:Int, background:Int):Int {
+			if (pixel == Color.TRANSPARENT) return background
+			val alpha = ((pixel.toLong() and 0xFF000000) shr 24) // 透明度通道
+			// val a1 = ((background.toLong() and 0xFF000000) shr 24) // 透明度通道
+			val r0 = ((pixel and 0x00FF0000) shr 16) // 红色通道
+			val r1 = ((background and 0x00FF0000) shr 16) // 红色通道
+			val g0 = ((pixel and 0x0000FF00) shr 8) // 绿色通道
+			val g1 = ((background and 0x0000FF00) shr 8) // 绿色通道
+			val b0 = (pixel and 0x000000FF) // 蓝色通道
+			val b1 = (background and 0x000000FF) // 蓝色通道
+			return (0xFF000000 or // 透明度
+					(((r0 * alpha + r1 * (0xFF - alpha)) / 0xFF).toLong() shl 16) or
+					(((g0 * alpha + g1 * (0xFF - alpha)) / 0xFF).toLong() shl 8) or
+					((b0 * alpha + b1 * (0xFF - alpha)) / 0xFF).toLong()).toInt()
+		}
+
+		@JvmStatic fun removeBackground(pkg:String, pixels:IntArray, width:Int, height:Int, dest:Int = Color.TRANSPARENT):Boolean {
+			// blend(pixels)
+			
+			// 方形
+			// val lt = bitmap.getPixel(0, 0); val rt = bitmap.getPixel(width - 1, 0)
+			// val lb = bitmap.getPixel(0, height - 1); val rb = bitmap.getPixel(width - 1, height - 1)
+			// if ((lt == rt) && (rt == lb) && (lb == rb) && (lt != dest)) { // 四角颜色一致
+			// 	// Log.d(T, "removeBackground1($pixels, $width, $height, ${Integer.toHexString(lt)}, ${Integer.toHexString(dest)})")
+			// 	// floodFill(pixels, width, height, lt, dest)
+			// 	removeColor(pixels, lt, dest)
+			// 	bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+			// 	return false
+			// }
+
+			// 圆形
+			// pixels.fill(0xFFFFFFFF.toInt())
+			// 		// val hypot = hypot(x - cx, y - cy)
+			// 		// if (outside < hypot || inside > hypot ) continue
+			val outside = width.toFloat() / 2; val inside = width.toFloat() / 4
+			assert(outside > inside)
+			// circularFill(pixels, width, height) { dx, dy, pixel ->
+			// 	val hypot = hypot(dx, dy)
+			// 	// Log.d(T, "hypot = $hypot dx,dy = $dx, $dy")
+			// 	(outside < hypot || inside > hypot)
+			// }
+			val map = mutableMapOf<Int, Int>()
+			val total = circularScan(pixels, width, height, map) { dx, dy, pixel ->
+				val hypot = hypot(dx, dy)
+				pixel != Color.TRANSPARENT || outside < hypot || inside > hypot
+			}
+			// Log.d(T, "$pkg circularScan() ${map.size} / $total")
+			if (map.size > 1) {
+				val maxBy = map.maxBy { it.value }
+				// maxBy?.key
+				// Log.d(T, "$pkg circularScan() ${Integer.toHexString(maxBy!!.key)} = ${maxBy!!.value} ${maxBy!!.value.toFloat() / total}")
+				if (maxBy != null && (maxBy.value.toFloat() / total) > 0.2) {
+					// Log.d(T, "$pkg removeBackground1($pixels, ${Integer.toHexString(maxBy.key)}, ${Integer.toHexString(dest)})")
+					removeColor(pkg, pixels, maxBy.key, dest) // TODO 考虑改用播种加洪泛式的颜色移除
+					return true
+				}
+			}
+
+			return false
+		}
+
+		// 环状填充
+		fun circularFill(pixels:IntArray, width:Int, height:Int, included:(Float,Float,Int) -> Boolean) {
+			Log.d(T, "circularFill(width,height = $width, $height)")
+
+			val cx = width.toFloat() / 2; val cy = height.toFloat() / 2
+			for (y in 0 until height) {
+				for (x in 0 until width) {
+					val pos = width * y + x // 偏移
+					if (!included(x - cx, y - cy, pixels[pos])) continue
+					pixels[pos] = 0xFFFF0000.toInt()
 				}
 			}
 		}
 
-		@JvmStatic fun removeBackground(bitmap:Bitmap?, dest:Int = Color.TRANSPARENT):Boolean {
-			if (bitmap == null) { return false }
-
-			val width = bitmap.getWidth(); val height = bitmap.getHeight()
-			val pixels = IntArray(width * height)
-			bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-
-			// blend(pixels, width, height)
-			
-			// 方形
-			val lt = bitmap.getPixel(0, 0); val rt = bitmap.getPixel(width - 1, 0)
-			val lb = bitmap.getPixel(0, height - 1); val rb = bitmap.getPixel(width - 1, height - 1)
-			if ((lt == rt) && (rt == lb) && (lb == rb) && (lt != dest)) { // 四角颜色一致
-				// Log.d("SmallIcon", "removeBackground1($pixels, $width, $height, ${Integer.toHexString(lt)}, ${Integer.toHexString(dest)})")
-				removeBackground0(pixels, width, height, lt, dest)
-				bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-				return false
-			}
-
-			// 圆形
-			val map = mutableMapOf<Int, Int>()
-			circularScan(pixels, width, height, map, width.toFloat() * 3 / 4, width.toFloat() / 4)
-			// Log.d("SmallIcon", "scan() ${map.size}")
-			val maxBy = map.maxBy { it.value }
-			// maxBy?.key
-			// Log.d("SmallIcon", "scan() ${maxBy}")
-			if (maxBy != null && maxBy.value > 300) { // TODO
-				// Log.d("SmallIcon", "removeBackground1($pixels, $width, $height, ${Integer.toHexString(lt)}, ${Integer.toHexString(dest)})")
-				removeColor(pixels, width, height, maxBy.key, dest) // TODO
-				bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-				return true
-			}
-
-			bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-			return false
-		}
-
 		// 环状扫描
-		fun circularScan(pixels:IntArray, width:Int, height:Int, map:MutableMap<Int, Int>, from:Float, to:Float = from + 1):Int {
-			assert(from > to)
-			// Log.d("SmallIcon", "width,height,cx,cy,r = $width, $height, $cx, $cy, $r")
+		fun circularScan(pixels:IntArray, width:Int, height:Int, colorMap:MutableMap<Int, Int>, included:(Float,Float,Int) -> Boolean):Int {
+			// Log.d(T, "circularScan(width,height = $width, $height)")
 
 			val cx = width.toFloat() / 2; val cy = height.toFloat() / 2; var count = 0
 			for (y in 0 until height) {
 				for (x in 0 until width) {
-					val hypot = hypot(x - cx, y - cy)
-					if (from < hypot || to > hypot ) continue
-					// Log.d("SmallIcon", "x,y = $x, $y")
 					val pos = width * y + x // 偏移
-					val pixel = pixels[pos] // 颜色值
-					if (pixel == Color.TRANSPARENT) continue
+					val pixel = pixels[pos]
+					if (!included(x - cx, y - cy, pixel)) continue
 					count++
-					if (map.containsKey(pixel)) {
-						var count = map[pixel]
-						if (count != null) { map[pixel] = count + 1 }
+					if (colorMap.containsKey(pixel)) {
+						var count = colorMap[pixel]
+						if (count != null) { colorMap[pixel] = count + 1 }
 					} else {
-						map[pixel] = 1
+						colorMap[pixel] = 1
 					}
 				}
 			}
@@ -264,8 +373,8 @@ class IconCache private constructor() {
 		private val STATE_REMOVE:Byte = 0x11.toByte() // 移除
 		private val STATE_REMOVER:Byte = 0x12.toByte() // 移除
 
-		// 从四角开始移除颜色
-		fun removeBackground0(pixels:IntArray, width:Int, height:Int, target:Int, dest:Int = Color.TRANSPARENT) {
+		// 从四角开始洪泛法移除相同颜色
+		fun floodFill(pixels:IntArray, width:Int, height:Int, target:Int, dest:Int = Color.TRANSPARENT) {
 			val states = ByteArray(width * height)
 			states.fill(STATE_SWING)
 
@@ -310,19 +419,28 @@ class IconCache private constructor() {
 			}
 		}
 
+		// fun _h(_int:Int) = Integer.toHexString(_int)
+
+		// 颜色容差
+		private val DIFF = 1 shl 13
 		// 直接把特定颜色移除
-		fun removeColor(pixels:IntArray, width:Int, height:Int, target:Int, dest:Int = Color.TRANSPARENT) {
+		fun removeColor(pkg:String, pixels:IntArray, target:Int, dest:Int = Color.TRANSPARENT) {
 			val r = ((target and 0x00FF0000) shr 16) // 红色
 			val g = ((target and 0x0000FF00) shr 8) // 绿色
 			val b = (target and 0x000000FF) // 蓝色
 			for (pos in 0 until pixels.size) { // 正向填充
-				val pixel = pixels[pos]
-				if (pixel == Color.TRANSPARENT) continue
-				val red = ((pixel and 0x00FF0000) shr 16) - r // 红色差异
-				val green = ((pixel and 0x0000FF00) shr 8) - g // 绿色差异
-				val blue = (pixel and 0x000000FF) - b // 蓝色差异
-				val diff = red * red + green * green + blue * blue
-				if (diff <= 256) {
+				var pixel = pixels[pos]
+				val alpha = ((pixel.toLong() and 0xFF000000) ushr 24).toInt() // 透明度通道
+				if (alpha == 0) continue
+				pixel = blend(pixel, target)
+				val dr = ((pixel and 0x00FF0000) shr 16) - r // 红色差异
+				val dg = ((pixel and 0x0000FF00) shr 8) - g // 绿色差异
+				val db = (pixel and 0x000000FF) - b // 蓝色差异
+				val diff = dr * dr + dg * dg + db * db
+				// if (pkg == "com.apple.android.music" && diff > DIFF) {
+				// 	Log.d(T, "$pkg $pos $dr($r) $dg($g) $db($b) ${_h(pixel)} $diff")
+				// }
+				if (diff <= DIFF) {
 					pixels[pos] = dest
 				}
 			}

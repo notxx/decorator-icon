@@ -443,36 +443,6 @@ public class ImgUtils {
 	}
 
 	/**
-	 * 转换Drawable为Bitmap
-	 * 
-	 * @param drawable
-	 * 
-	 * @return
-	 */
-	public static Bitmap drawableToBitmap(Drawable drawable) {
-		Rect bounds = drawable.getBounds();
-		return drawableToBitmap(drawable, new Rect(0, 0, 72, 72), 72, 72); // TODO
-	}
-
-	/**
-	 * 转换Drawable为Bitmap
-	 * 
-	 * @param drawable
-	 * @param drawBounds
-	 * @param w
-	 * @param h
-	 * 
-	 * @return
-	 */
-	public static Bitmap drawableToBitmap(Drawable drawable, Rect drawBounds, int w, int h) {
-		Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-		Canvas canvas = new Canvas(bitmap);
-		drawable.setBounds(drawBounds); // 切掉部分
-		drawable.draw(canvas);
-		return bitmap;
-	}
-
-	/**
 	 * 缩放Bitmap
 	 */
 	public static Bitmap scaleImage(Bitmap bitmap, Rect dest, boolean recycle) {

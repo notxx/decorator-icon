@@ -45,7 +45,7 @@ class CachedSmallIconDecorator:SmallIconDecoratorBase() {
 			// Log.d(T, "res $packageName iconId: $iconId")
 			val ref = iconId
 			val cached = cache.getIcon(this, packageName,
-					raw = { _, _ -> ImgUtils.drawableToBitmap(resources!!.getDrawable(ref)) }) // TODO
+					{ _, _ -> IconCache.render(resources!!.getDrawable(ref)) }) // TODO
 			if (cached != null) {
 				n.setSmallIcon(cached)
 			} else {
@@ -64,9 +64,7 @@ class CachedSmallIconDecorator:SmallIconDecoratorBase() {
 			iconId = appResources?.getIdentifier(MIPUSH_SMALL_ICON, "drawable", packageName)
 			if (iconId != null && iconId != 0) { // has embed icon
 				// Log.d(T, "mipush_small $packageName iconId: $iconId")
-				val ref = iconId
-				val cached = cache.getMiPushIcon(this, packageName,
-						{ _, _ -> ImgUtils.drawableToBitmap(appResources!!.getDrawable(ref)) })
+				val cached = cache.getMiPushIcon(this, iconId, packageName)
 				if (cached != null) {
 					n.setSmallIcon(cached)
 				} else {

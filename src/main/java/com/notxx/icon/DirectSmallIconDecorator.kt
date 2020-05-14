@@ -14,9 +14,9 @@ class DirectSmallIconDecorator:SmallIconDecoratorBase() {
 	protected override fun applySmallIcon(evolving:MutableStatusBarNotification, n:MutableNotification) {
 		val original = n.getSmallIcon()
 		if (original == null) return
-		var bitmap = ImgUtils.drawableToBitmap(original.loadDrawable(this))
+		var bitmap = IconCache.render(original.loadDrawable(this))
 		n.color = getBackgroundColor(bitmap)
-		bitmap = IconCache.whitenBitmap(this, bitmap)
+		bitmap = IconCache.whiten(this, bitmap)
 		n.setSmallIcon(Icon.createWithBitmap(bitmap))
 	}
 

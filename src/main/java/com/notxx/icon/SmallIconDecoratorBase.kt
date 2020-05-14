@@ -112,7 +112,9 @@ abstract class SmallIconDecoratorBase:NevoDecoratorService() {
 	}
 
 	companion object {
-		@JvmStatic private val T = "SmallIconDecoratorBase"
+		private val T = "SmallIconDecoratorBase"
+
+		@JvmStatic public val SIZE = 144
 
 		protected val EXTRAS_PHASE = "nevo.smallIcon.phase"
 		protected val PHASE_BIG_TEXT = 1.toByte()
