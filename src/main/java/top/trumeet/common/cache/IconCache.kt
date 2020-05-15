@@ -142,7 +142,7 @@ class IconCache private constructor() {
 
 	@JvmOverloads fun getIcon(ctx:Context, pkg:String,
 			gen:((Context, String) -> Bitmap?) = ({ ctx, pkg -> getIconForeground(ctx, pkg) }),
-			whiten:((Context, Bitmap?) -> Bitmap?) = ({ _, b -> alphaize(b) }),
+			whiten:((Context, Bitmap?) -> Bitmap?) = ({ _, b -> alphaize(pkg, b) }),
 			iconize:((Context, Bitmap?) -> Icon?) = ({ _, b -> (if (b != null) Icon.createWithBitmap(b) else null) })):Icon? {
 		return object:AbstractCacheAspect<Icon?>(iconCache) {
 			override fun gen():Icon? {
@@ -156,7 +156,7 @@ class IconCache private constructor() {
 
 	@JvmOverloads fun getMiPushIcon(resources:Resources, iconId:Int, pkg:String,
 			gen:((Resources, Int) -> Bitmap?) = { resources, iconId -> render(resources.getDrawable(iconId, null)) },
-			whiten:((Bitmap?) -> Bitmap?) = { b -> alphaize(b) },
+			whiten:((Bitmap?) -> Bitmap?) = { b -> alphaize(pkg, b) },
 			iconize:((Bitmap?) -> Icon?) = { b -> (if (b != null) Icon.createWithBitmap(b) else null) }):Icon? {
 		return object:AbstractCacheAspect<Icon?>(mipushCache) {
 			override fun gen():Icon? {
@@ -228,31 +228,85 @@ class IconCache private constructor() {
 			return ImgUtils.convertToTransparentAndWhite(b, density)
 		}
 
+		val ALPHA_MAX:Short = 0xFF
+		val ALPHA_MIN:Short = 0x3F
 		// 将图像灰度化然后转化为透明度形式
-		@JvmStatic fun alphaize(bitmap:Bitmap?):Bitmap? {
+		@JvmStatic @JvmOverloads fun alphaize(pkg:String, bitmap:Bitmap?, autoLevel:Boolean = true):Bitmap? {
 			if (bitmap == null) { return null }
 
 			val width = bitmap.getWidth()
 			val height = bitmap.getHeight()
-			val pixels = IntArray(width * height)
-			bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+			val temp = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+			try {
+				val pixels = IntArray(width * height)
+				temp.getPixels(pixels, 0, width, 0, 0, width, height)
 
-			for (i in 0 until height) {
-				for (j in 0 until width) {
-					val pos = width * i + j // 偏移
+				val alphas = ShortArray(width * height)
+				val map = mutableMapOf<Short, Int>()
+				for (pos in 0 until pixels.size) {
 					val pixel = pixels[pos] // 颜色值
-					val alpha = ((pixel.toLong() and 0xFF000000) shr 24).toFloat() // 透明度通道
+					val alpha = ((pixel.toLong() and 0xFF000000) shr 24).toInt() // 透明度通道
+					if (alpha == 0) continue
 					val red = ((pixel and 0x00FF0000) shr 16).toFloat() // 红色通道
 					val green = ((pixel and 0x0000FF00) shr 8).toFloat() // 绿色通道
 					val blue = (pixel and 0x000000FF).toFloat() // 蓝色通道
-					val gray = (alpha * (red * 0.3 + green * 0.59 + blue * 0.11) / 0xFF).toInt() // 混合为明亮度
-					pixels[pos] = ((gray shl 24) or 0xFFFFFF) // 以明亮度作为透明度
+					var gray = (alpha * (red * 0.3 + green * 0.59 + blue * 0.11) / 0xFF).toShort() // 混合为明亮度
+					if (gray == 0.toShort()) gray = 1 // 强制加1，避免与透明背景混同
+					alphas[pos] = gray
+					if (map.containsKey(gray)) {
+						val count = map[gray]
+						if (count != null) map[gray] = count + 1
+					} else {
+						map[gray] = 1
+					}
 				}
-			}
+				if (autoLevel) {
+					val threshold = alphas.size * 0.01
+					val filtered = map.filter { it.value > threshold }
+					val max = filtered.maxBy { it.key }; val min = map.minBy { it.key }
+					// if (pkg.startsWith("com.lastpass")) {
+					// 	Log.d(T, "autoLevel $pkg max,min = $max, $min")
+					// 	Log.d(T, "autoLevel $pkg threshold,map,filtered = $threshold, ${map.size}, ${filtered.size}")
+					// }
+					if (max != null && min != null && max.key <= ALPHA_MAX) {
+						if (max.key > min.key) {
+							val q = (ALPHA_MAX - ALPHA_MIN).toFloat() / (max.key - min.key)
+							// if (pkg.startsWith("com.lastpass")) {
+							// 	Log.d(T, "autoLevel $pkg q = $q, ${(max.key - min.key) * q + min.key}")
+							// }
+							for (key in map.keys) {
+								map[key] = if (key >= max.key) {
+									ALPHA_MAX.toInt()
+								} else if (key >= min.key) {
+									((key - min.key) * q + ALPHA_MIN).toInt()
+								} else {
+									ALPHA_MIN.toInt()
+								}
+							}
+						} else {
+							for (key in map.keys) {
+								map[key] = if (key >= max.key) {
+									ALPHA_MAX.toInt()
+								} else {
+									ALPHA_MIN.toInt()
+								}
+							}
+						}
+					}
+				}
+				// if (pkg.startsWith("com.lastpass")) {
+				// 	Log.d(T, "autoLevel $pkg map = $map")
+				// }
+				for (pos in 0 until pixels.size) {
+					val alpha = alphas[pos]
+					val a = map[alpha] ?: 0
+					pixels[pos] = ((a shl 24) or 0xFFFFFF) // 以明亮度作为透明度
+				}
 
-			val r = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-			r.setPixels(pixels, 0, width, 0, 0, width, height)
-			return r
+				val r = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+				r.setPixels(pixels, 0, width, 0, 0, width, height)
+				return r
+			} finally { temp.recycle() }
 		}
 
 		// 混合颜色
@@ -320,12 +374,15 @@ class IconCache private constructor() {
 			// Log.d(T, "$pkg circularScan() ${map.size} / $total")
 			if (map.size > 1) {
 				val maxBy = map.maxBy { it.value }
-				// maxBy?.key
-				// Log.d(T, "$pkg circularScan() ${Integer.toHexString(maxBy!!.key)} = ${maxBy!!.value} ${maxBy!!.value.toFloat() / total}")
-				if (maxBy != null && (maxBy.value.toFloat() / total) > 0.2) {
-					// Log.d(T, "$pkg removeBackground1($pixels, ${Integer.toHexString(maxBy.key)}, ${Integer.toHexString(dest)})")
-					removeColor(pkg, pixels, maxBy.key, dest) // TODO 考虑改用播种加洪泛式的颜色移除
-					return true
+				if (maxBy != null) {
+					// maxBy?.key
+					// Log.d(T, "$pkg circularScan() ${Integer.toHexString(maxBy!!.key)} = ${maxBy!!.value} ${maxBy!!.value.toFloat() / total}")
+					val q = maxBy.value.toFloat() / total
+					if (q > 0.2 && q < 0.8) {
+						// Log.d(T, "$pkg removeBackground1($pixels, ${Integer.toHexString(maxBy.key)}, ${Integer.toHexString(dest)})")
+						removeColor(pkg, pixels, maxBy.key, dest) // TODO 考虑改用播种加洪泛式的颜色移除
+						return true
+					}
 				}
 			}
 

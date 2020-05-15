@@ -87,13 +87,13 @@ abstract class SmallIconDecoratorBase:NevoDecoratorService() {
 			Log.d(T, "skip modifying channel")
 		}
 		// smallIcon
-		// if (phase < PHASE_SMALL_ICON && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+		if (phase < PHASE_SMALL_ICON && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 			Log.d(T, "begin modifying smallIcon")
 			applySmallIcon(evolving, n)
-		// 	extras.putByte(EXTRAS_PHASE, PHASE_SMALL_ICON)
-		// } else {
-		// 	Log.d(T, "skip modifying smallIcon")
-		// }
+			extras.putByte(EXTRAS_PHASE, PHASE_SMALL_ICON)
+		} else {
+			Log.d(T, "skip modifying smallIcon")
+		}
 		Log.d(T, "end modifying")
 		return true
 	}

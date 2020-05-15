@@ -163,7 +163,7 @@ public class MainActivity extends Activity {
 				Bitmap iconForeground = cache.getIconForeground(appContext, info.packageName);
 				if (iconForeground != null) {
 					foreground.setImageBitmap(iconForeground);
-					whiten.setImageBitmap(IconCache.alphaize(iconForeground));
+					whiten.setImageBitmap(IconCache.alphaize(info.packageName, iconForeground));
 				} else {
 					foreground.setImageIcon(null);
 					whiten.setImageIcon(null);
