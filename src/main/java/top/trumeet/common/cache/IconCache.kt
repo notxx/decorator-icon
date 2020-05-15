@@ -4,6 +4,7 @@ import kotlin.math.max
 import kotlin.math.hypot
 
 import android.content.Context
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -153,16 +154,16 @@ class IconCache private constructor() {
 		}.get(pkg)
 	}
 
-	@JvmOverloads fun getMiPushIcon(ctx:Context, iconId:Int, pkg:String,
-			gen:((Context, Int) -> Bitmap?) = { ctx, iconId -> render(ctx.getResources().getDrawable(iconId)) },
-			whiten:((Context, Bitmap?) -> Bitmap?) = ({ _, b -> alphaize(b) }),
-			iconize:((Context, Bitmap?) -> Icon?) = ({ _, b -> (if (b != null) Icon.createWithBitmap(b) else null) })):Icon? {
+	@JvmOverloads fun getMiPushIcon(resources:Resources, iconId:Int, pkg:String,
+			gen:((Resources, Int) -> Bitmap?) = { resources, iconId -> render(resources.getDrawable(iconId, null)) },
+			whiten:((Bitmap?) -> Bitmap?) = { b -> alphaize(b) },
+			iconize:((Bitmap?) -> Icon?) = { b -> (if (b != null) Icon.createWithBitmap(b) else null) }):Icon? {
 		return object:AbstractCacheAspect<Icon?>(mipushCache) {
 			override fun gen():Icon? {
-				var bitmap = gen(ctx, iconId)
+				var bitmap = gen(resources, iconId)
 				if (bitmap == null) { return null }
-				bitmap = whiten(ctx, bitmap)
-				val icon = iconize(ctx, bitmap)
+				bitmap = whiten(bitmap)
+				val icon = iconize(bitmap)
 				// Log.d(T, "icon: $icon")
 				return icon
 			}

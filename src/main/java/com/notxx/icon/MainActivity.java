@@ -147,7 +147,7 @@ public class MainActivity extends Activity {
 				// else if ((iconId = appContext.getResources().getIdentifier(NOTIFICATION_ICON, "drawable", info.packageName)) != 0)
 				// 	mipushIcon.setImageIcon(Icon.createWithResource(info.packageName, iconId));
 					final int ref = iconId;
-					mipushIcon.setImageIcon(cache.getMiPushIcon(appContext, iconId, info.packageName));
+					mipushIcon.setImageIcon(cache.getMiPushIcon(appContext.getResources(), iconId, info.packageName));
 				} else
 					mipushIcon.setImageIcon(null);
 				mipushIcon.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecoratorBase.getBackgroundColor(b)));

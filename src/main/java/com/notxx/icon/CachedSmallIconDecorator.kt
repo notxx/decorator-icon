@@ -45,7 +45,7 @@ class CachedSmallIconDecorator:SmallIconDecoratorBase() {
 			// Log.d(T, "res $packageName iconId: $iconId")
 			val ref = iconId
 			val cached = cache.getIcon(this, packageName,
-					{ _, _ -> IconCache.render(resources!!.getDrawable(ref)) }) // TODO
+					{ _, _ -> IconCache.render(resources!!.getDrawable(ref, null)) }) // TODO
 			if (cached != null) {
 				n.setSmallIcon(cached)
 			} else {
@@ -59,12 +59,12 @@ class CachedSmallIconDecorator:SmallIconDecoratorBase() {
 		}
 		if (iconId != null && iconId != 0) { // do nothing
 			// Log.d(T, "do nothing $packageName iconId: $iconId")
-		} else {
+		} else if (appResources != null) {
 			// Log.d(T, "$packageName appResources: $appResources")
-			iconId = appResources?.getIdentifier(MIPUSH_SMALL_ICON, "drawable", packageName)
-			if (iconId != null && iconId != 0) { // has embed icon
+			iconId = appResources.getIdentifier(MIPUSH_SMALL_ICON, "drawable", packageName)
+			if (iconId != 0) { // has embed icon
 				// Log.d(T, "mipush_small $packageName iconId: $iconId")
-				val cached = cache.getMiPushIcon(this, iconId, packageName)
+				val cached = cache.getMiPushIcon(appResources, iconId, packageName)
 				if (cached != null) {
 					n.setSmallIcon(cached)
 				} else {
