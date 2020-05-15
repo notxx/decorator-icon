@@ -8,14 +8,14 @@ import com.oasisfeng.nevo.sdk.MutableNotification
 import com.oasisfeng.nevo.sdk.MutableStatusBarNotification
 
 import top.trumeet.common.cache.IconCache
-import top.trumeet.common.utils.ImgUtils
 
 class DirectSmallIconDecorator:SmallIconDecoratorBase() {
 	protected override fun applySmallIcon(evolving:MutableStatusBarNotification, n:MutableNotification) {
 		val original = n.getSmallIcon()
 		if (original == null) return
 		var bitmap = IconCache.render(original.loadDrawable(this))
-		n.color = getBackgroundColor(bitmap)
+		val packageName = evolving.getPackageName()
+		n.color = IconCache.backgroundColor(packageName, bitmap)
 		bitmap = IconCache.whiten(this, bitmap)
 		n.setSmallIcon(Icon.createWithBitmap(bitmap))
 	}

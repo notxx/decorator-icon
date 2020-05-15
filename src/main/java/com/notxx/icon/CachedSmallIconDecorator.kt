@@ -85,7 +85,7 @@ class CachedSmallIconDecorator:SmallIconDecoratorBase() {
 			// Log.d(T, "do nothing $packageName colorId: $colorId")
 		} else {
 			// Log.d(T, "generate $packageName color")
-			n.color = cache.getAppColor(this, packageName, { _, b -> getBackgroundColor(b) })
+			n.color = cache.getAppColor(this, packageName)
 		}
 	}
 

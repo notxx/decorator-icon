@@ -5,14 +5,12 @@ import android.app.NotificationChannel
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.res.Resources
-import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Process
 import android.provider.Settings
 import android.support.annotation.RequiresApi
-import android.support.v7.graphics.Palette
 import android.util.Log
 
 import java.util.ArrayList
@@ -120,17 +118,5 @@ abstract class SmallIconDecoratorBase:NevoDecoratorService() {
 		protected val PHASE_BIG_TEXT = 1.toByte()
 		protected val PHASE_CHANNEL = 2.toByte()
 		protected val PHASE_SMALL_ICON = 3.toByte()
-
-		@JvmStatic fun getBackgroundColor(bitmap:Bitmap?):Int {
-			var backgroundColor = Color.BLACK
-			if (bitmap != null) {
-				val palette = Palette.from(bitmap).generate()
-				val swatch = palette.getDominantSwatch()
-				if (swatch != null) {
-					backgroundColor = swatch.getRgb()
-				}
-			}
-			return backgroundColor
-		}
 	}
 }

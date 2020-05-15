@@ -9,7 +9,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Rect
-import android.graphics.RectF
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
@@ -170,8 +169,8 @@ class IconCache private constructor() {
 		}.get(pkg)
 	}
 
-	fun getAppColor(ctx:Context, pkg:String,
-			convert:((Context, Bitmap?) -> Int)):Int {
+	@JvmOverloads fun getAppColor(ctx:Context, pkg:String,
+			convert:((Context, Bitmap?) -> Int) = { _, b -> backgroundColor(pkg, b)}):Int {
 		return object:AbstractCacheAspect<Int>(appColorCache) {
 			override fun gen():Int {
 				val background = getIconBackground(ctx, pkg)
@@ -477,7 +476,7 @@ class IconCache private constructor() {
 			}
 		}
 
-		// fun _h(_int:Int) = Integer.toHexString(_int)
+		fun _h(_int:Int) = Integer.toHexString(_int)
 
 		// 颜色容差
 		private val DIFF = 1 shl 13
@@ -502,6 +501,44 @@ class IconCache private constructor() {
 					pixels[pos] = dest
 				}
 			}
+		}
+
+		@JvmStatic fun backgroundColor(pkg:String, bitmap:Bitmap?):Int {
+			if (bitmap == null) { return Color.BLACK }
+
+			val width = bitmap.getWidth(); val height = bitmap.getHeight()
+			val temp = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+			try {
+				val pixels = IntArray(width * height)
+				temp.getPixels(pixels, 0, width, 0, 0, width, height)
+				val map = mutableMapOf<Int, Int>()
+				for (pos in 0 until pixels.size) {
+					val pixel = pixels[pos]
+					val alpha = ((pixel.toLong() and 0xFF000000) shr 24).toInt() // 透明度通道
+					if (alpha == 0) continue
+					val red = ((pixel and 0x00FF0000) shr 16).toFloat() // 红色通道
+					val green = ((pixel and 0x0000FF00) shr 8).toFloat() // 绿色通道
+					val blue = (pixel and 0x000000FF).toFloat() // 蓝色通道
+					if (red == green && green == blue) continue
+					val rgb = pixel and 0xFFFFFF // RGB颜色值
+					if (map.containsKey(rgb)) {
+						val count = map[rgb]
+						if (count != null) map[rgb] = count + 1
+					} else {
+						map[rgb] = 1
+					}
+				}
+				val filtered = map.filter { it.key != 0 && it.key != 0xFFFFFF }  // 预先剔除黑色和白色
+				// if (pkg.startsWith("com.apple")) {
+				// 	val view = map.filter { it.value > 10 }.map { "${_h(it.key)} = ${it.value}" }
+				// 	Log.d(T, "backgroundColor filtered $view") 
+				// }
+				val max = filtered.maxBy { it.value } // 获得最多的颜色
+				return if (max != null) {
+					if (pkg.startsWith("com.apple")) { Log.d(T, "backgroundColor max ${_h(max.key)} = ${max.value}") }
+					(max.key.toLong() or 0xFF000000).toInt()
+				} else { Color.BLACK }
+			} finally { temp.recycle() }
 		}
 	}
 }

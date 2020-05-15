@@ -70,7 +70,7 @@ public class MainActivity extends Activity {
 					.setContentText(info.packageName);
 			Icon cached = cache.getIcon(MainActivity.this, info.packageName);
 			if (cached != null) { n.setSmallIcon(cached); }
-			int color = cache.getAppColor(MainActivity.this, info.packageName, (ctx, b) -> SmallIconDecoratorBase.getBackgroundColor(b));
+			int color = cache.getAppColor(MainActivity.this, info.packageName);
 			if (color != -1) {
 				n.setColor(color);
 				n.setColorized(false);
@@ -150,7 +150,7 @@ public class MainActivity extends Activity {
 					mipushIcon.setImageIcon(cache.getMiPushIcon(appContext.getResources(), iconId, info.packageName));
 				} else
 					mipushIcon.setImageIcon(null);
-				mipushIcon.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecoratorBase.getBackgroundColor(b)));
+				mipushIcon.setColorFilter(cache.getAppColor(appContext, info.packageName));
 				// background
 				Bitmap iconBackground = cache.getIconBackground(appContext, info.packageName);
 				if (iconBackground != null) {
@@ -172,7 +172,7 @@ public class MainActivity extends Activity {
 				Icon iconCache = cache.getIcon(MainActivity.this, info.packageName);
 				if (iconCache != null) {
 					gen.setImageIcon(iconCache);
-					gen.setColorFilter(cache.getAppColor(appContext, info.packageName, (ctx, b) -> SmallIconDecoratorBase.getBackgroundColor(b)));
+					gen.setColorFilter(cache.getAppColor(appContext, info.packageName));
 				} else {
 					gen.setImageIcon(null);
 				}
